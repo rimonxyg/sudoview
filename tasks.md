@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.3**
+**CURRENT TASK: T1.4**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -47,7 +47,7 @@
 - Done when: `npm start` prints the listening line, and connecting with a WebSocket client and sending `{"type":"foo"}` returns the `bad_message` error. (Use a quick one-off node script to check, do not keep it.)
 - Commit: `T1.2: basic ws server`
 
-### [ ] T1.3 Rooms: create and join
+### [x] T1.3 Rooms: create and join
 - In `server.js` keep a `Map` called `rooms`: code → `{ host, viewer, createdAt }`.
 - `create`: generate a 6-digit code with `crypto.randomInt(100000, 1000000)` as a string. Regenerate if it already exists. Store the room. Reply `created` with the code.
 - `join`: if the code does not exist reply error `invalid_code`. If the room already has a viewer reply error `room_busy`. Otherwise set `viewer`, reply `waiting` to the viewer, and send `join-request` to the host.
@@ -263,3 +263,4 @@
 | 2026-10-16 12:29 | T0.3 | DONE | Repo skeleton created, initial push to GitHub main |
 | 2026-10-16 12:30 | T1.1 | DONE | Server project initialized with ws package and scripts |
 | 2026-10-16 14:35 | T1.2 | DONE | Basic WebSocket server implemented on port 8082, handling invalid messages |
+| 2026-10-16 14:38 | T1.3 | DONE | Implemented rooms Map, 6-digit room creation, and viewer join flow |
