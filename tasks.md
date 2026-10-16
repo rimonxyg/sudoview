@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.1**
+**CURRENT TASK: T1.2**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -34,7 +34,7 @@
 
 ## PHASE 1: Signaling server (`server/`)
 
-### [ ] T1.1 Init server project
+### [x] T1.1 Init server project
 - `cd server`, `npm init -y`, `npm install ws`.
 - In `package.json` add scripts: `"start": "node server.js"` and `"test": "node test.js"`.
 - Done when: `node -e "require('ws')"` runs with no error.
@@ -261,3 +261,4 @@
 | 2026-10-16 11:58 | T0.1 | DONE | Flutter 3.47.7, Android toolchain OK, node v24.19.0, npm 12.0.2, git 2.53.0 |
 | 2026-10-16 12:28 | T0.2 | DONE | GitHub repo https://github.com/rimonxyg/sudoview.git verified and set |
 | 2026-10-16 12:29 | T0.3 | DONE | Repo skeleton created, initial push to GitHub main |
+| 2026-10-16 12:30 | T1.1 | DONE | Server project initialized with ws package and scripts |
