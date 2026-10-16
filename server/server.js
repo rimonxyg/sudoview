@@ -12,6 +12,48 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server });
 const rooms = new Map();
 
+const CLEANUP_INTERVAL_MS = 30 * 1000;
+const ROOM_TIMEOUT_MS = 5 * 60 * 1000;
+
+function deleteRoom(code) {
+  if (!code || !rooms.has(code)) return;
+  const room = rooms.get(code);
+  if (room.timer) {
+    clearTimeout(room.timer);
+    room.timer = null;
+  }
+  rooms.delete(code);
+}
+
+function sweepRooms(now = Date.now()) {
+  for (const [code, room] of rooms.entries()) {
+    if (!room.sessionStarted && now - room.createdAt > ROOM_TIMEOUT_MS) {
+      if (room.host && room.host.readyState === room.host.OPEN) {
+        room.host.close();
+      }
+      if (room.viewer && room.viewer.readyState === room.viewer.OPEN) {
+        room.viewer.close();
+      }
+      deleteRoom(code);
+    }
+  }
+}
+
+let cleanupInterval = setInterval(() => sweepRooms(), CLEANUP_INTERVAL_MS);
+if (cleanupInterval && cleanupInterval.unref) {
+  cleanupInterval.unref();
+}
+
+function stopCleanup() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+  for (const [code] of rooms.entries()) {
+    deleteRoom(code);
+  }
+}
+
 function sendError(ws, message) {
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify({ type: 'error', message }));
@@ -30,6 +72,8 @@ function getRoomForClient(ws) {
 }
 
 wss.on('connection', (ws) => {
+  ws.failedAttempts = 0;
+
   ws.on('message', (raw) => {
     let data;
     try {
@@ -49,11 +93,24 @@ wss.on('connection', (ws) => {
           code = crypto.randomInt(100000, 1000000).toString();
         } while (rooms.has(code));
 
+        const timer = setTimeout(() => {
+          if (rooms.has(code)) {
+            const r = rooms.get(code);
+            if (!r.sessionStarted) {
+              if (r.host && r.host.readyState === r.host.OPEN) r.host.close();
+              if (r.viewer && r.viewer.readyState === r.viewer.OPEN) r.viewer.close();
+              deleteRoom(code);
+            }
+          }
+        }, ROOM_TIMEOUT_MS);
+        if (timer.unref) timer.unref();
+
         rooms.set(code, {
           host: ws,
           viewer: null,
           createdAt: Date.now(),
-          sessionStarted: false
+          sessionStarted: false,
+          timer
         });
 
         ws.roomCode = code;
@@ -66,6 +123,12 @@ wss.on('connection', (ws) => {
       case 'join': {
         const { code } = data;
         if (!code || typeof code !== 'string' || !rooms.has(code)) {
+          ws.failedAttempts = (ws.failedAttempts || 0) + 1;
+          if (ws.failedAttempts >= 5) {
+            sendError(ws, 'too_many_attempts');
+            ws.close();
+            return;
+          }
           return sendError(ws, 'invalid_code');
         }
 
@@ -92,6 +155,11 @@ wss.on('connection', (ws) => {
         }
         if (!room.viewer) {
           return sendError(ws, 'not_allowed');
+        }
+        room.sessionStarted = true;
+        if (room.timer) {
+          clearTimeout(room.timer);
+          room.timer = null;
         }
         if (room.viewer.readyState === room.viewer.OPEN) {
           room.viewer.send(JSON.stringify({ type: 'accepted' }));
@@ -124,6 +192,10 @@ wss.on('connection', (ws) => {
           return sendError(ws, 'bad_message');
         }
         room.sessionStarted = true;
+        if (room.timer) {
+          clearTimeout(room.timer);
+          room.timer = null;
+        }
         if (room.viewer && room.viewer.readyState === room.viewer.OPEN) {
           room.viewer.send(JSON.stringify({ type: 'offer', sdp: data.sdp }));
         }
@@ -177,7 +249,7 @@ wss.on('connection', (ws) => {
           room.viewer.roomCode = null;
           room.viewer.role = null;
         }
-        rooms.delete(code);
+        deleteRoom(code);
         break;
       }
 
@@ -198,7 +270,7 @@ wss.on('connection', (ws) => {
         room.viewer.roomCode = null;
         room.viewer.role = null;
       }
-      rooms.delete(ws.roomCode);
+      deleteRoom(ws.roomCode);
     } else if (ws === room.viewer) {
       if (room.host && room.host.readyState === room.host.OPEN) {
         room.host.send(JSON.stringify({ type: 'peer-left' }));
@@ -223,4 +295,14 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { server, wss, rooms, startServer };
+module.exports = {
+  server,
+  wss,
+  rooms,
+  deleteRoom,
+  startServer,
+  sweepRooms,
+  stopCleanup,
+  cleanupInterval,
+  ROOM_TIMEOUT_MS
+};

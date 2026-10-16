@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.5**
+**CURRENT TASK: T1.6**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -64,7 +64,7 @@
 - Done when: a one-off script walks through accept, offer relay, end, and decline correctly.
 - Commit: `T1.4: accept decline relay end`
 
-### [ ] T1.5 Expiry and brute-force protection
+### [x] T1.5 Expiry and brute-force protection
 - When a room is created, set a 5-minute timer. If no session has started (no accept happened), delete the room. Clear the timer when the room is deleted.
 - Count wrong `join` codes per connection. On the 5th wrong code reply error `too_many_attempts` and close that connection.
 - Done when: a one-off script confirms 5 wrong codes get the connection closed. (For the expiry check, temporarily set the timer to 3 seconds, test, then set it back to 5 minutes.)
@@ -265,3 +265,4 @@
 | 2026-10-16 14:35 | T1.2 | DONE | Basic WebSocket server implemented on port 8082, handling invalid messages |
 | 2026-10-16 14:38 | T1.3 | DONE | Implemented rooms Map, 6-digit room creation, and viewer join flow |
 | 2026-10-16 14:56 | T1.4 | DONE | Implemented accept, decline, offer/answer/ice relay, end, and peer-left on disconnect |
+| 2026-10-16 15:00 | T1.5 | DONE | Implemented 5-minute room timeout, sweep cleanup, and 5-attempt rate limit |
