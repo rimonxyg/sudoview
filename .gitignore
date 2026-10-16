@@ -10,3 +10,7 @@ local.properties
 *.apk
 .kotlin/
 .gradle/
+
+# Internal task tracking & context
+context.md
+tasks.md
