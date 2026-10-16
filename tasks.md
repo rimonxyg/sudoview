@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T2.2**
+**CURRENT TASK: T2.3**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -93,7 +93,7 @@
 - Done when: `cd app && flutter analyze` shows no errors.
 - Commit: `T2.1: flutter project`
 
-### [ ] T2.2 Add packages
+### [x] T2.2 Add packages
 - `cd app && flutter pub add flutter_webrtc web_socket_channel shared_preferences`
 - Done when: `flutter pub get` succeeds and all three are listed in `pubspec.yaml`.
 - Commit: `T2.2: add packages`
@@ -268,3 +268,4 @@
 | 2026-10-16 15:00 | T1.5 | DONE | Implemented 5-minute room timeout, sweep cleanup, and 5-attempt rate limit |
 | 2026-10-16 15:02 | T1.6 | DONE | Created server/test.js, all 8 checks passing with npm test |
 | 2026-10-16 15:04 | T2.1 | DONE | Flutter Android project created, flutter analyze clean |
+| 2026-10-16 15:06 | T2.2 | DONE | Added flutter_webrtc, web_socket_channel, shared_preferences to pubspec.yaml |
