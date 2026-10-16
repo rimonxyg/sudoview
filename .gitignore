@@ -1,0 +1,10 @@
+node_modules/
+.env
+build/
+.dart_tool/
+*.keystore
+*.jks
+key.properties
+local.properties
+.idea/
+*.apk
