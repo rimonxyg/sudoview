@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.2**
+**CURRENT TASK: T1.3**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -40,9 +40,9 @@
 - Done when: `node -e "require('ws')"` runs with no error.
 - Commit: `T1.1: init server`
 
-### [ ] T1.2 Basic WebSocket server
+### [x] T1.2 Basic WebSocket server
 - Create `server/server.js`. Use Node's `http` to create a server and attach a `ws` WebSocketServer.
-- Port: `process.env.PORT` or `8080`. Print `Server listening on <port>`.
+- Port: `process.env.PORT` or `8082`. Print `Server listening on <port>`.
 - On each message: parse JSON. If parsing fails or `type` is missing, reply `{"type":"error","message":"bad_message"}`.
 - Done when: `npm start` prints the listening line, and connecting with a WebSocket client and sending `{"type":"foo"}` returns the `bad_message` error. (Use a quick one-off node script to check, do not keep it.)
 - Commit: `T1.2: basic ws server`
@@ -262,3 +262,4 @@
 | 2026-10-16 12:28 | T0.2 | DONE | GitHub repo https://github.com/rimonxyg/sudoview.git verified and set |
 | 2026-10-16 12:29 | T0.3 | DONE | Repo skeleton created, initial push to GitHub main |
 | 2026-10-16 12:30 | T1.1 | DONE | Server project initialized with ws package and scripts |
+| 2026-10-16 14:35 | T1.2 | DONE | Basic WebSocket server implemented on port 8082, handling invalid messages |

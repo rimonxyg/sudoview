@@ -48,7 +48,7 @@ App name: **TeachView** (can be renamed later by the user).
 **Network**
 - STUN: `stun:stun.l.google.com:19302`
 - No TURN server in the MVP (known limitation: may fail on some strict networks)
-- Server runs on the laptop. Phones join the same Wi-Fi. Server URL looks like `ws://<LAPTOP_LAN_IP>:8080`
+- Server runs on the laptop. Phones join the same Wi-Fi. Server URL looks like `ws://<LAPTOP_LAN_IP>:8082`
 
 ---
 
@@ -136,7 +136,7 @@ All messages are JSON text over WebSocket. Every message has a `type` field.
 - Test screen sharing on a **real Android phone with USB debugging**. Emulators are unreliable for screen capture.
 - The Viewer can run on a second phone or on an emulator.
 - Android blocks plain `ws://` traffic by default. For development only, the manifest needs `android:usesCleartextTraffic="true"` (task T2.7). Mention in the README that production should use `wss://`.
-- Phones and laptop must be on the same Wi-Fi. Find the laptop IP with `ipconfig` (Windows) or `ip a` (Linux). Allow port 8080 through the laptop firewall if the phone cannot connect.
+- Phones and laptop must be on the same Wi-Fi. Find the laptop IP with `ipconfig` (Windows) or `ip a` (Linux). Allow port 8082 through the laptop firewall if the phone cannot connect.
 
 ---
 
@@ -159,6 +159,7 @@ All messages are JSON text over WebSocket. Every message has a `type` field.
    6. `git push`
 10. If power or internet was lost mid-task: run `git status` and `git diff`, check what is half done, finish that same task, and only then continue.
 11. Ask the user only when a task says to, or when you are BLOCKED.
+12. **Persistent project settings:** Repo name is SudoView (`https://github.com/rimonxyg/sudoview.git`) and default signaling port is `8082` (due to local Docker port conflicts on 8080 and 8081 reserved by user). Never forget or revert these choices across sessions and restarts.
 
 ---
 
@@ -185,3 +186,6 @@ Remote control (taps/swipes), Accessibility Service, audio, file transfer, accou
 | Date | Decision | Reason |
 |---|---|---|
 | (start) | View-only MVP, 6-digit code, Accept/Decline, WebRTC, Node `ws` signaling | Simple, secure, demo-able |
+| 2026-10-16 | Project/repo name is SudoView | User set repository to sudoview (`https://github.com/rimonxyg/sudoview.git`) |
+| 2026-10-16 | Signaling server default port is 8082 | Port 8080 is occupied by OSCP Docker container and 8081 is reserved by user |
+
