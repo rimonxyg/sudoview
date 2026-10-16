@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.6**
+**CURRENT TASK: T2.1**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -70,7 +70,7 @@
 - Done when: a one-off script confirms 5 wrong codes get the connection closed. (For the expiry check, temporarily set the timer to 3 seconds, test, then set it back to 5 minutes.)
 - Commit: `T1.5: expiry and attempt limit`
 
-### [ ] T1.6 Automated test
+### [x] T1.6 Automated test
 - Create `server/test.js` that starts the server on a test port (for example 8090), then runs these checks with the `ws` client and prints `PASS` or `FAIL` for each:
   1. create returns a 6-digit code
   2. wrong code returns `invalid_code`
@@ -266,3 +266,4 @@
 | 2026-10-16 14:38 | T1.3 | DONE | Implemented rooms Map, 6-digit room creation, and viewer join flow |
 | 2026-10-16 14:56 | T1.4 | DONE | Implemented accept, decline, offer/answer/ice relay, end, and peer-left on disconnect |
 | 2026-10-16 15:00 | T1.5 | DONE | Implemented 5-minute room timeout, sweep cleanup, and 5-attempt rate limit |
+| 2026-10-16 15:02 | T1.6 | DONE | Created server/test.js, all 8 checks passing with npm test |
