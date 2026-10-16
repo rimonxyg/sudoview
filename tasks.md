@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T2.1**
+**CURRENT TASK: T2.2**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -88,7 +88,7 @@
 
 ## PHASE 2: Flutter app skeleton (`app/`)
 
-### [ ] T2.1 Create Flutter project
+### [x] T2.1 Create Flutter project
 - From the repo root run: `flutter create --org com.teachview --project-name teachview --platforms android app`
 - Done when: `cd app && flutter analyze` shows no errors.
 - Commit: `T2.1: flutter project`
@@ -267,3 +267,4 @@
 | 2026-10-16 14:56 | T1.4 | DONE | Implemented accept, decline, offer/answer/ice relay, end, and peer-left on disconnect |
 | 2026-10-16 15:00 | T1.5 | DONE | Implemented 5-minute room timeout, sweep cleanup, and 5-attempt rate limit |
 | 2026-10-16 15:02 | T1.6 | DONE | Created server/test.js, all 8 checks passing with npm test |
+| 2026-10-16 15:04 | T2.1 | DONE | Flutter Android project created, flutter analyze clean |
