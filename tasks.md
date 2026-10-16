@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T1.4**
+**CURRENT TASK: T1.5**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -54,7 +54,7 @@
 - Done when: a one-off script shows host gets a code, viewer joins with it, host receives `join-request`, viewer receives `waiting`. A wrong code returns `invalid_code`.
 - Commit: `T1.3: create and join`
 
-### [ ] T1.4 Accept, decline, relay, end
+### [x] T1.4 Accept, decline, relay, end
 - `accept` (host only): send `accepted` to the viewer.
 - `decline` (host only): send `declined` to the viewer and set `room.viewer = null`.
 - `offer`, `answer`, `ice`: forward the message unchanged to the other side of the room.
@@ -264,3 +264,4 @@
 | 2026-10-16 12:30 | T1.1 | DONE | Server project initialized with ws package and scripts |
 | 2026-10-16 14:35 | T1.2 | DONE | Basic WebSocket server implemented on port 8082, handling invalid messages |
 | 2026-10-16 14:38 | T1.3 | DONE | Implemented rooms Map, 6-digit room creation, and viewer join flow |
+| 2026-10-16 14:56 | T1.4 | DONE | Implemented accept, decline, offer/answer/ice relay, end, and peer-left on disconnect |

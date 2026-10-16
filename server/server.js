@@ -18,6 +18,17 @@ function sendError(ws, message) {
   }
 }
 
+function getRoomForClient(ws) {
+  if (!ws.roomCode || !rooms.has(ws.roomCode)) {
+    return null;
+  }
+  const room = rooms.get(ws.roomCode);
+  if (room.host !== ws && room.viewer !== ws) {
+    return null;
+  }
+  return room;
+}
+
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let data;
@@ -41,7 +52,8 @@ wss.on('connection', (ws) => {
         rooms.set(code, {
           host: ws,
           viewer: null,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          sessionStarted: false
         });
 
         ws.roomCode = code;
@@ -73,10 +85,128 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'accept': {
+        const room = getRoomForClient(ws);
+        if (!room || ws !== room.host) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (!room.viewer) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (room.viewer.readyState === room.viewer.OPEN) {
+          room.viewer.send(JSON.stringify({ type: 'accepted' }));
+        }
+        break;
+      }
+
+      case 'decline': {
+        const room = getRoomForClient(ws);
+        if (!room || ws !== room.host) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (room.viewer) {
+          if (room.viewer.readyState === room.viewer.OPEN) {
+            room.viewer.send(JSON.stringify({ type: 'declined' }));
+          }
+          room.viewer.roomCode = null;
+          room.viewer.role = null;
+          room.viewer = null;
+        }
+        break;
+      }
+
+      case 'offer': {
+        const room = getRoomForClient(ws);
+        if (!room || ws !== room.host) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (typeof data.sdp !== 'string') {
+          return sendError(ws, 'bad_message');
+        }
+        room.sessionStarted = true;
+        if (room.viewer && room.viewer.readyState === room.viewer.OPEN) {
+          room.viewer.send(JSON.stringify({ type: 'offer', sdp: data.sdp }));
+        }
+        break;
+      }
+
+      case 'answer': {
+        const room = getRoomForClient(ws);
+        if (!room || ws !== room.viewer) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (typeof data.sdp !== 'string') {
+          return sendError(ws, 'bad_message');
+        }
+        if (room.host && room.host.readyState === room.host.OPEN) {
+          room.host.send(JSON.stringify({ type: 'answer', sdp: data.sdp }));
+        }
+        break;
+      }
+
+      case 'ice': {
+        const room = getRoomForClient(ws);
+        if (!room) {
+          return sendError(ws, 'not_allowed');
+        }
+        if (!data.candidate || typeof data.candidate !== 'object') {
+          return sendError(ws, 'bad_message');
+        }
+        const other = (ws === room.host) ? room.viewer : room.host;
+        if (other && other.readyState === other.OPEN) {
+          other.send(JSON.stringify({ type: 'ice', candidate: data.candidate }));
+        }
+        break;
+      }
+
+      case 'end': {
+        const room = getRoomForClient(ws);
+        if (!room) {
+          return sendError(ws, 'not_allowed');
+        }
+        const other = (ws === room.host) ? room.viewer : room.host;
+        if (other && other.readyState === other.OPEN) {
+          other.send(JSON.stringify({ type: 'ended' }));
+        }
+        const code = ws.roomCode;
+        if (room.host) {
+          room.host.roomCode = null;
+          room.host.role = null;
+        }
+        if (room.viewer) {
+          room.viewer.roomCode = null;
+          room.viewer.role = null;
+        }
+        rooms.delete(code);
+        break;
+      }
+
       default:
         sendError(ws, 'bad_message');
         break;
     }
+  });
+
+  ws.on('close', () => {
+    if (!ws.roomCode || !rooms.has(ws.roomCode)) {
+      return;
+    }
+    const room = rooms.get(ws.roomCode);
+    if (ws === room.host) {
+      if (room.viewer && room.viewer.readyState === room.viewer.OPEN) {
+        room.viewer.send(JSON.stringify({ type: 'peer-left' }));
+        room.viewer.roomCode = null;
+        room.viewer.role = null;
+      }
+      rooms.delete(ws.roomCode);
+    } else if (ws === room.viewer) {
+      if (room.host && room.host.readyState === room.host.OPEN) {
+        room.host.send(JSON.stringify({ type: 'peer-left' }));
+      }
+      room.viewer = null;
+    }
+    ws.roomCode = null;
+    ws.role = null;
   });
 });
 
