@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T4.2**
+**CURRENT TASK: T4.3**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -192,7 +192,7 @@
 - Done when: a wrong code shows a clear message, and a correct code makes the host phone show the Accept dialog.
 - Commit: `T4.1: viewer join`
 
-### [ ] T4.2 Viewer: WebRTC answer
+### [x] T4.2 Viewer: WebRTC answer
 - When the Join message is sent, create the `RTCPeerConnection` (same STUN setup) and an `RTCVideoRenderer` (call `initialize()`).
 - On incoming `offer`: `setRemoteDescription`, `createAnswer`, `setLocalDescription`, send `{"type":"answer","sdp":...}`.
 - Exchange `ice` messages both ways.
@@ -286,6 +286,7 @@
 | 2026-10-17 16:52 | T3.5 | DONE | Implemented RTCPeerConnection offer, local ICE exchange, and answer handling, tests pass |
 | 2026-10-17 16:56 | T3.6 | DONE | Implemented host stop & cleanup for media tracks, peer connection, native service and endings, tests pass |
 | 2026-10-17 16:59 | T4.1 | DONE | Implemented ViewerScreen code input, join flow, waiting/declined/error states, tests pass |
+| 2026-10-17 17:02 | T4.2 | DONE | Implemented RTCPeerConnection, RTCVideoRenderer, answer creation and remote track handling, tests pass |
 
 
 

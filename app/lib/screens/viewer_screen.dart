@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/settings.dart';
 import '../services/signaling.dart';
 
@@ -15,8 +16,15 @@ enum ViewerState {
 
 class ViewerScreen extends StatefulWidget {
   final SignalingClient? signalingClient;
+  final Future<RTCPeerConnection> Function(Map<String, dynamic> configuration)? peerConnectionFactory;
+  final Future<RTCVideoRenderer> Function()? rendererFactory;
 
-  const ViewerScreen({super.key, this.signalingClient});
+  const ViewerScreen({
+    super.key,
+    this.signalingClient,
+    this.peerConnectionFactory,
+    this.rendererFactory,
+  });
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -26,6 +34,10 @@ class _ViewerScreenState extends State<ViewerScreen> {
   final TextEditingController _codeController = TextEditingController();
   late final SignalingClient _signaling;
   StreamSubscription<Map<String, dynamic>>? _subscription;
+
+  RTCPeerConnection? _peerConnection;
+  RTCVideoRenderer? _videoRenderer;
+  bool _hasRemoteTrack = false;
 
   ViewerState _state = ViewerState.idle;
   String? _errorMessage;
@@ -41,8 +53,23 @@ class _ViewerScreenState extends State<ViewerScreen> {
   void dispose() {
     _subscription?.cancel();
     _signaling.close();
+    _cleanupWebRTC();
     _codeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _cleanupWebRTC() async {
+    try {
+      await _peerConnection?.close();
+      await _peerConnection?.dispose();
+      _peerConnection = null;
+    } catch (_) {}
+
+    try {
+      _videoRenderer?.srcObject = null;
+      await _videoRenderer?.dispose();
+      _videoRenderer = null;
+    } catch (_) {}
   }
 
   Future<void> _joinSession() async {
@@ -91,6 +118,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
         'type': 'join',
         'code': code,
       });
+
+      await _initWebRTC();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -100,7 +129,59 @@ class _ViewerScreenState extends State<ViewerScreen> {
     }
   }
 
-  void _handleMessage(Map<String, dynamic> message) {
+  Future<void> _initWebRTC() async {
+    try {
+      final renderer = widget.rendererFactory != null
+          ? await widget.rendererFactory!()
+          : RTCVideoRenderer();
+      await renderer.initialize();
+      _videoRenderer = renderer;
+
+      final configuration = <String, dynamic>{
+        'iceServers': [
+          {'urls': 'stun:stun.l.google.com:19302'},
+        ],
+        'sdpSemantics': 'unified-plan',
+      };
+
+      final pc = widget.peerConnectionFactory != null
+          ? await widget.peerConnectionFactory!(configuration)
+          : await createPeerConnection(configuration);
+
+      _peerConnection = pc;
+
+      pc.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate != null) {
+          _signaling.send({
+            'type': 'ice',
+            'candidate': {
+              'candidate': candidate.candidate,
+              'sdpMid': candidate.sdpMid,
+              'sdpMLineIndex': candidate.sdpMLineIndex,
+            },
+          });
+        }
+      };
+
+      pc.onTrack = (RTCTrackEvent event) {
+        debugPrint('remote track received');
+        if (event.streams.isNotEmpty) {
+          _videoRenderer?.srcObject = event.streams[0];
+        }
+        if (mounted) {
+          setState(() {
+            _state = ViewerState.accepted;
+            _hasRemoteTrack = true;
+            _statusText = 'Streaming screen';
+          });
+        }
+      };
+    } catch (e) {
+      debugPrint('Error initializing Viewer WebRTC: $e');
+    }
+  }
+
+  Future<void> _handleMessage(Map<String, dynamic> message) async {
     if (!mounted) return;
     final type = message['type'];
 
@@ -120,6 +201,25 @@ class _ViewerScreenState extends State<ViewerScreen> {
         _statusText = 'Host declined';
       });
       _signaling.close();
+      _cleanupWebRTC();
+    } else if (type == 'offer') {
+      debugPrint('offer received');
+      final sdp = message['sdp']?.toString() ?? '';
+      await _handleOffer(sdp);
+    } else if (type == 'ice') {
+      final candidateMap = message['candidate'];
+      if (candidateMap is Map && _peerConnection != null) {
+        try {
+          final candidate = RTCIceCandidate(
+            candidateMap['candidate']?.toString(),
+            candidateMap['sdpMid']?.toString(),
+            candidateMap['sdpMLineIndex'] is int ? candidateMap['sdpMLineIndex'] as int : null,
+          );
+          await _peerConnection!.addCandidate(candidate);
+        } catch (e) {
+          debugPrint('Error adding ICE candidate: $e');
+        }
+      }
     } else if (type == 'error') {
       final serverMsg = message['message']?.toString() ?? 'unknown';
       setState(() {
@@ -128,6 +228,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
       });
       if (serverMsg == 'too_many_attempts') {
         _signaling.close();
+        _cleanupWebRTC();
       }
     } else if (type == 'ended' || type == 'peer-left') {
       setState(() {
@@ -135,6 +236,34 @@ class _ViewerScreenState extends State<ViewerScreen> {
         _errorMessage = type == 'peer-left' ? 'Host disconnected' : 'Session ended';
       });
       _signaling.close();
+      _cleanupWebRTC();
+    }
+  }
+
+  Future<void> _handleOffer(String sdp) async {
+    try {
+      if (_peerConnection == null) return;
+      final description = RTCSessionDescription(sdp, 'offer');
+      await _peerConnection!.setRemoteDescription(description);
+
+      final answerConstraints = <String, dynamic>{
+        'mandatory': {
+          'OfferToReceiveAudio': false,
+          'OfferToReceiveVideo': true,
+        },
+        'optional': [],
+      };
+
+      final answer = await _peerConnection!.createAnswer(answerConstraints);
+      await _peerConnection!.setLocalDescription(answer);
+
+      _signaling.send({
+        'type': 'answer',
+        'sdp': answer.sdp,
+      });
+      debugPrint('answer sent');
+    } catch (e) {
+      debugPrint('Error handling offer: $e');
     }
   }
 
@@ -156,10 +285,12 @@ class _ViewerScreenState extends State<ViewerScreen> {
   void _cancelOrReset() {
     _subscription?.cancel();
     _signaling.close();
+    _cleanupWebRTC();
     setState(() {
       _state = ViewerState.idle;
       _errorMessage = null;
       _statusText = null;
+      _hasRemoteTrack = false;
     });
   }
 
@@ -231,10 +362,14 @@ class _ViewerScreenState extends State<ViewerScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle_outline, color: Colors.green, size: 56),
+          Icon(
+            _hasRemoteTrack ? Icons.tv : Icons.check_circle_outline,
+            color: Colors.green,
+            size: 56,
+          ),
           const SizedBox(height: 16),
           Text(
-            'Host accepted!',
+            _hasRemoteTrack ? 'Connected!' : 'Host accepted!',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,

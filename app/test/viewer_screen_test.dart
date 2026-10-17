@@ -1,9 +1,113 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teachview/screens/viewer_screen.dart';
 import 'package:teachview/services/signaling.dart';
+
+class FakeMediaStreamTrack implements MediaStreamTrack {
+  @override
+  String get kind => 'video';
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeMediaStream implements MediaStream {
+  bool isDisposed = false;
+  final List<MediaStreamTrack> tracks;
+
+  FakeMediaStream([List<MediaStreamTrack>? customTracks])
+      : tracks = customTracks ?? [FakeMediaStreamTrack()];
+
+  @override
+  String get id => 'fake_remote_stream';
+
+  @override
+  List<MediaStreamTrack> getTracks() => tracks;
+
+  @override
+  Future<void> dispose() async {
+    isDisposed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeRTCVideoRenderer implements RTCVideoRenderer {
+  bool isInitialized = false;
+  bool isDisposed = false;
+  MediaStream? src;
+
+  @override
+  Future<void> initialize() async {
+    isInitialized = true;
+  }
+
+  @override
+  set srcObject(MediaStream? stream) {
+    src = stream;
+  }
+
+  @override
+  MediaStream? get srcObject => src;
+
+  @override
+  Future<void> dispose() async {
+    isDisposed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeRTCPeerConnection implements RTCPeerConnection {
+  RTCSessionDescription? remoteDesc;
+  RTCSessionDescription? localDesc;
+  final List<RTCIceCandidate> candidatesAdded = [];
+  bool isClosed = false;
+
+  @override
+  Function(RTCIceCandidate candidate)? onIceCandidate;
+
+  @override
+  Function(RTCTrackEvent event)? onTrack;
+
+  @override
+  Future<void> setRemoteDescription(RTCSessionDescription description) async {
+    remoteDesc = description;
+  }
+
+  @override
+  Future<RTCSessionDescription> createAnswer([Map<String, dynamic>? constraints]) async {
+    return RTCSessionDescription('v=0\r\no=viewer 67890\r\ns=answer', 'answer');
+  }
+
+  @override
+  Future<void> setLocalDescription(RTCSessionDescription description) async {
+    localDesc = description;
+  }
+
+  @override
+  Future<void> addCandidate(RTCIceCandidate candidate) async {
+    candidatesAdded.add(candidate);
+  }
+
+  @override
+  Future<void> close() async {
+    isClosed = true;
+  }
+
+  @override
+  Future<void> dispose() async {
+    isClosed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class FakeSignalingClient implements SignalingClient {
   final List<Map<String, dynamic>> sentMessages = [];
@@ -44,9 +148,15 @@ void main() {
 
   testWidgets('ViewerScreen initial UI has textfield and Join button is disabled until 6 digits', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
 
     await tester.pumpWidget(MaterialApp(
-      home: ViewerScreen(signalingClient: fakeClient),
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
     ));
 
     expect(find.text('Enter 6-digit Code'), findsOneWidget);
@@ -70,9 +180,15 @@ void main() {
 
   testWidgets('ViewerScreen joins and handles waiting then accepted states', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
 
     await tester.pumpWidget(MaterialApp(
-      home: ViewerScreen(signalingClient: fakeClient),
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
     ));
 
     await tester.enterText(find.byType(TextField), '654321');
@@ -99,9 +215,15 @@ void main() {
 
   testWidgets('ViewerScreen handles host declined state', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
 
     await tester.pumpWidget(MaterialApp(
-      home: ViewerScreen(signalingClient: fakeClient),
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
     ));
 
     await tester.enterText(find.byType(TextField), '112233');
@@ -129,9 +251,15 @@ void main() {
 
   testWidgets('ViewerScreen shows specific error texts for invalid_code, room_busy, too_many_attempts', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
 
     await tester.pumpWidget(MaterialApp(
-      home: ViewerScreen(signalingClient: fakeClient),
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
     ));
 
     // 1. invalid_code
@@ -156,5 +284,74 @@ void main() {
     await tester.pump();
 
     expect(find.text('Too many failed attempts. You have been locked out.'), findsOneWidget);
+  });
+
+  testWidgets('ViewerScreen handles incoming WebRTC offer, creates answer, exchanges ICE and handles track', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
+    Map<String, dynamic>? capturedConfig;
+
+    await tester.pumpWidget(MaterialApp(
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (config) async {
+          capturedConfig = config;
+          return fakePC;
+        },
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField), '654321');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+    await tester.pump();
+
+    // Verify WebRTC initialized on Join
+    expect(fakeRenderer.isInitialized, isTrue);
+    expect(capturedConfig?['iceServers'][0]['urls'], 'stun:stun.l.google.com:19302');
+
+    // Simulate offer from host
+    fakeClient.emitMessage({
+      'type': 'offer',
+      'sdp': 'v=0\r\nhost-offer-sdp',
+    });
+    await tester.pump();
+
+    // Verify remote description set & answer sent
+    expect(fakePC.remoteDesc?.sdp, 'v=0\r\nhost-offer-sdp');
+    expect(fakePC.localDesc?.type, 'answer');
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'answer' && m['sdp'] != null), isTrue);
+
+    // Simulate local ICE candidate generated by PC
+    fakePC.onIceCandidate?.call(RTCIceCandidate('candidate:1 1 UDP ...', 'video', 0));
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'ice' && m['candidate'] != null), isTrue);
+
+    // Simulate incoming ICE candidate from host
+    fakeClient.emitMessage({
+      'type': 'ice',
+      'candidate': {
+        'candidate': 'candidate:2 1 UDP ...',
+        'sdpMid': 'video',
+        'sdpMLineIndex': 0,
+      },
+    });
+    await tester.pump();
+    expect(fakePC.candidatesAdded.length, 1);
+    expect(fakePC.candidatesAdded.first.candidate, 'candidate:2 1 UDP ...');
+
+    // Simulate incoming track
+    final fakeStream = FakeMediaStream();
+    fakePC.onTrack?.call(RTCTrackEvent(
+      receiver: null as dynamic,
+      streams: [fakeStream],
+      track: fakeStream.tracks.first,
+      transceiver: null as dynamic,
+    ));
+    await tester.pump();
+
+    expect(fakeRenderer.srcObject, equals(fakeStream));
+    expect(find.text('Connected!'), findsOneWidget);
   });
 }
