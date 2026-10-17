@@ -374,4 +374,63 @@ void main() {
     expect(fakePC.isClosed, isTrue);
     expect(fakeRenderer.isDisposed, isTrue);
   });
+
+  testWidgets('ViewerScreen handles ended message by cleaning up and showing Session ended SnackBar', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField), '654321');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'accepted'});
+    await tester.pump();
+
+    // Remote side ends session
+    fakeClient.emitMessage({'type': 'ended'});
+    await tester.pump();
+
+    // Verify cleanup
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isFalse);
+    expect(fakeClient.isClosed, isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(fakeRenderer.isDisposed, isTrue);
+    expect(find.widgetWithText(SnackBar, 'Session ended'), findsOneWidget);
+  });
+
+  testWidgets('ViewerScreen handles peer-left and connection loss with SnackBar', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeRenderer = FakeRTCVideoRenderer();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: ViewerScreen(
+        signalingClient: fakeClient,
+        rendererFactory: () async => fakeRenderer,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField), '654321');
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'peer-left'});
+    await tester.pump();
+
+    expect(fakeClient.isClosed, isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(find.widgetWithText(SnackBar, 'Session ended'), findsOneWidget);
+  });
 }

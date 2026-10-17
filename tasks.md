@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T4.4**
+**CURRENT TASK: T5.1**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -206,7 +206,7 @@
 - Done when: the viewer phone shows the host's screen live.
 - Commit: `T4.3: viewer video`
 
-### [ ] T4.4 Viewer: handle endings
+### [x] T4.4 Viewer: handle endings
 - On `ended`, `peer-left` or connection loss: clean up, go to the home screen, and show a SnackBar "Session ended".
 - Done when: pressing Stop on the host returns the viewer home with the message, and the reverse also works.
 - Commit: `T4.4: viewer endings`
@@ -288,6 +288,7 @@
 | 2026-10-17 16:59 | T4.1 | DONE | Implemented ViewerScreen code input, join flow, waiting/declined/error states, tests pass |
 | 2026-10-17 17:02 | T4.2 | DONE | Implemented RTCPeerConnection, RTCVideoRenderer, answer creation and remote track handling, tests pass |
 | 2026-10-17 17:04 | T4.3 | DONE | Implemented full-screen RTCVideoView with contain fit, black background and Leave button, tests pass |
+| 2026-10-17 17:07 | T4.4 | DONE | Implemented viewer cleanup on ended, peer-left and connection loss with SnackBar, tests pass |
 
 
 

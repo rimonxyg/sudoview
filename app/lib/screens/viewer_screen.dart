@@ -63,6 +63,13 @@ class _ViewerScreenState extends State<ViewerScreen> {
   bool _isCleaningUp = false;
 
   Future<void> _leaveSession({bool sendEnd = true}) async {
+    await _endSession(sendEnd: sendEnd);
+  }
+
+  Future<void> _endSession({
+    String? message,
+    bool sendEnd = false,
+  }) async {
     if (_isCleaningUp) return;
     _isCleaningUp = true;
 
@@ -76,8 +83,21 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _signaling.close();
     await _cleanupWebRTC();
 
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+    if (mounted) {
+      if (message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _state = ViewerState.idle;
+          _hasRemoteTrack = false;
+          _isCleaningUp = false;
+        });
+      }
     }
   }
 
@@ -119,20 +139,23 @@ class _ViewerScreenState extends State<ViewerScreen> {
         _handleMessage,
         onError: (e) {
           if (!mounted) return;
-          setState(() {
-            _state = ViewerState.error;
-            _errorMessage = 'Connection error: $e';
-          });
+          if (_state == ViewerState.waitingForHost ||
+              _state == ViewerState.accepted ||
+              _hasRemoteTrack) {
+            _endSession(message: 'Session ended', sendEnd: false);
+          } else {
+            setState(() {
+              _state = ViewerState.error;
+              _errorMessage = 'Connection error: $e';
+            });
+          }
         },
         onDone: () {
           if (!mounted) return;
-          if (_state != ViewerState.declined &&
-              _state != ViewerState.error &&
-              _state != ViewerState.idle) {
-            setState(() {
-              _state = ViewerState.error;
-              _errorMessage = 'Disconnected from server';
-            });
+          if (_state == ViewerState.waitingForHost ||
+              _state == ViewerState.accepted ||
+              _hasRemoteTrack) {
+            _endSession(message: 'Session ended', sendEnd: false);
           }
         },
       );
@@ -254,12 +277,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         _cleanupWebRTC();
       }
     } else if (type == 'ended' || type == 'peer-left') {
-      setState(() {
-        _state = ViewerState.error;
-        _errorMessage = type == 'peer-left' ? 'Host disconnected' : 'Session ended';
-      });
-      _signaling.close();
-      _cleanupWebRTC();
+      _endSession(message: 'Session ended', sendEnd: false);
     }
   }
 
