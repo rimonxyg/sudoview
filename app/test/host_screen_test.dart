@@ -30,6 +30,62 @@ class FakeMediaStream implements MediaStream {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class FakeRTCPeerConnection implements RTCPeerConnection {
+  RTCSessionDescription? localDesc;
+  RTCSessionDescription? remoteDesc;
+  final List<RTCIceCandidate> candidatesAdded = [];
+  bool isClosed = false;
+
+  @override
+  Function(RTCIceCandidate candidate)? onIceCandidate;
+
+  @override
+  Function(RTCIceConnectionState state)? onIceConnectionState;
+
+  @override
+  Future<RTCRtpSender> addTrack(MediaStreamTrack track, [MediaStream? stream]) async {
+    return FakeRtpSender();
+  }
+
+  @override
+  Future<RTCSessionDescription> createOffer([Map<String, dynamic>? constraints]) async {
+    return RTCSessionDescription('v=0\r\no=mock 12345\r\ns=test', 'offer');
+  }
+
+  @override
+  Future<void> setLocalDescription(RTCSessionDescription description) async {
+    localDesc = description;
+  }
+
+  @override
+  Future<void> setRemoteDescription(RTCSessionDescription description) async {
+    remoteDesc = description;
+  }
+
+  @override
+  Future<void> addCandidate(RTCIceCandidate candidate) async {
+    candidatesAdded.add(candidate);
+  }
+
+  @override
+  Future<void> close() async {
+    isClosed = true;
+  }
+
+  @override
+  Future<void> dispose() async {
+    isClosed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeRtpSender implements RTCRtpSender {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeSignalingClient implements SignalingClient {
   final List<Map<String, dynamic>> sentMessages = [];
   final StreamController<Map<String, dynamic>> _controller = StreamController<Map<String, dynamic>>.broadcast();
@@ -120,9 +176,10 @@ void main() {
     expect(find.text('Waiting for viewer...'), findsOneWidget);
   });
 
-  testWidgets('HostScreen Accept starts screen capture and shows Starting...', (WidgetTester tester) async {
+  testWidgets('HostScreen Accept creates WebRTC offer and exchanges ICE/answer', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
     final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
     bool captureCalled = false;
 
     await tester.pumpWidget(MaterialApp(
@@ -131,6 +188,9 @@ void main() {
         screenCapture: (constraints) async {
           captureCalled = true;
           return fakeStream;
+        },
+        peerConnectionFactory: (config) async {
+          return fakePC;
         },
       ),
     ));
@@ -146,10 +206,40 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
 
+    // Verify accept and offer sent
     expect(fakeClient.sentMessages.any((m) => m['type'] == 'accept'), isTrue);
     expect(captureCalled, isTrue);
-    expect(find.text('Starting...'), findsOneWidget);
-    expect(find.text('Stop'), findsOneWidget);
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'offer'), isTrue);
+
+    // Simulate local ICE candidate from peer connection
+    fakePC.onIceCandidate?.call(RTCIceCandidate('candidate:1 1 UDP 1234', 'video', 0));
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'ice'), isTrue);
+
+    // Simulate answer received from viewer
+    fakeClient.emitMessage({
+      'type': 'answer',
+      'sdp': 'v=0\r\no=viewer 67890\r\ns=test',
+    });
+    await tester.pump();
+    expect(fakePC.remoteDesc?.sdp, contains('viewer 67890'));
+
+    // Simulate ICE candidate received from viewer
+    fakeClient.emitMessage({
+      'type': 'ice',
+      'candidate': {
+        'candidate': 'candidate:2 1 UDP 5678',
+        'sdpMid': 'video',
+        'sdpMLineIndex': 0,
+      },
+    });
+    await tester.pump();
+    expect(fakePC.candidatesAdded.length, equals(1));
+    expect(fakePC.candidatesAdded.first.candidate, equals('candidate:2 1 UDP 5678'));
+
+    // Verify Stop button terminates peer connection
+    await tester.tap(find.text('Stop'));
+    await tester.pump();
+    expect(fakePC.isClosed, isTrue);
   });
 
   testWidgets('Cancelling Android screen capture dialog sends end and stops session', (WidgetTester tester) async {
@@ -175,7 +265,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
 
-    // Verify end message was sent when system dialog was cancelled
     expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isTrue);
   });
 

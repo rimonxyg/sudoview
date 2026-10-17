@@ -7,15 +7,18 @@ import '../services/settings.dart';
 import '../services/signaling.dart';
 
 typedef ScreenCaptureFunction = Future<MediaStream> Function(Map<String, dynamic> constraints);
+typedef PeerConnectionFactory = Future<RTCPeerConnection> Function(Map<String, dynamic> configuration);
 
 class HostScreen extends StatefulWidget {
   final SignalingClient? signalingClient;
   final ScreenCaptureFunction? screenCapture;
+  final PeerConnectionFactory? peerConnectionFactory;
 
   const HostScreen({
     super.key,
     this.signalingClient,
     this.screenCapture,
+    this.peerConnectionFactory,
   });
 
   @override
@@ -26,6 +29,7 @@ class _HostScreenState extends State<HostScreen> {
   late final SignalingClient _signaling;
   StreamSubscription<Map<String, dynamic>>? _subscription;
   MediaStream? _localStream;
+  RTCPeerConnection? _peerConnection;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -83,7 +87,7 @@ class _HostScreenState extends State<HostScreen> {
     }
   }
 
-  void _handleMessage(Map<String, dynamic> message) {
+  Future<void> _handleMessage(Map<String, dynamic> message) async {
     if (!mounted) return;
     final type = message['type'];
 
@@ -95,6 +99,29 @@ class _HostScreenState extends State<HostScreen> {
       });
     } else if (type == 'join-request') {
       _showConsentDialog();
+    } else if (type == 'answer') {
+      final sdp = message['sdp']?.toString() ?? '';
+      final description = RTCSessionDescription(sdp, 'answer');
+      try {
+        await _peerConnection?.setRemoteDescription(description);
+        debugPrint('answer received');
+      } catch (e) {
+        debugPrint('Error setting remote description: $e');
+      }
+    } else if (type == 'ice') {
+      final candidateMap = message['candidate'];
+      if (candidateMap is Map) {
+        try {
+          final candidate = RTCIceCandidate(
+            candidateMap['candidate']?.toString(),
+            candidateMap['sdpMid']?.toString(),
+            candidateMap['sdpMLineIndex'] is int ? candidateMap['sdpMLineIndex'] as int : null,
+          );
+          await _peerConnection?.addCandidate(candidate);
+        } catch (e) {
+          debugPrint('Error adding ICE candidate: $e');
+        }
+      }
     } else if (type == 'ended' || type == 'peer-left') {
       setState(() {
         _isSharingStarted = false;
@@ -171,8 +198,78 @@ class _HostScreenState extends State<HostScreen> {
         _localStream = await navigator.mediaDevices.getDisplayMedia(constraints);
       }
       debugPrint('capture started');
+
+      await _initWebRTC();
     } catch (e) {
       debugPrint('Capture failed or cancelled: $e');
+      _stopSession();
+    }
+  }
+
+  Future<void> _initWebRTC() async {
+    try {
+      final configuration = <String, dynamic>{
+        'iceServers': [
+          {'urls': 'stun:stun.l.google.com:19302'},
+        ],
+        'sdpSemantics': 'unified-plan',
+      };
+
+      final pc = widget.peerConnectionFactory != null
+          ? await widget.peerConnectionFactory!(configuration)
+          : await createPeerConnection(configuration);
+
+      _peerConnection = pc;
+
+      if (_localStream != null) {
+        for (final track in _localStream!.getTracks()) {
+          await pc.addTrack(track, _localStream!);
+        }
+      }
+
+      pc.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate.candidate != null) {
+          _signaling.send({
+            'type': 'ice',
+            'candidate': {
+              'candidate': candidate.candidate,
+              'sdpMid': candidate.sdpMid,
+              'sdpMLineIndex': candidate.sdpMLineIndex,
+            },
+          });
+        }
+      };
+
+      pc.onIceConnectionState = (RTCIceConnectionState state) {
+        debugPrint('ICE connection state: $state');
+        if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+            state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
+          if (mounted) {
+            setState(() {
+              _statusText = 'Screen sharing active';
+            });
+          }
+        }
+      };
+
+      final offerConstraints = <String, dynamic>{
+        'mandatory': {
+          'OfferToReceiveAudio': false,
+          'OfferToReceiveVideo': false,
+        },
+        'optional': [],
+      };
+
+      final description = await pc.createOffer(offerConstraints);
+      await pc.setLocalDescription(description);
+
+      _signaling.send({
+        'type': 'offer',
+        'sdp': description.sdp,
+      });
+      debugPrint('offer sent');
+    } catch (e) {
+      debugPrint('WebRTC initialization error: $e');
       _stopSession();
     }
   }
@@ -187,6 +284,12 @@ class _HostScreenState extends State<HostScreen> {
       });
       _localStream?.dispose();
       _localStream = null;
+    } catch (_) {}
+
+    try {
+      _peerConnection?.close();
+      _peerConnection?.dispose();
+      _peerConnection = null;
     } catch (_) {}
 
     try {

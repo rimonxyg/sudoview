@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T3.5**
+**CURRENT TASK: T3.6**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -168,7 +168,7 @@
 - Done when: after tapping Accept, Android shows its own "start capturing / casting" dialog, a persistent notification appears after confirming, and the app logs `capture started`. Cancelling the system dialog must send `end` and return to the home screen.
 - Commit: `T3.4: start capture`
 
-### [ ] T3.5 Host: WebRTC offer
+### [x] T3.5 Host: WebRTC offer
 - Create an `RTCPeerConnection` with iceServers `[{'urls': 'stun:stun.l.google.com:19302'}]`.
 - Add the captured stream's tracks. Create the offer, `setLocalDescription`, send `{"type":"offer","sdp":...}`.
 - Send every local ICE candidate as `{"type":"ice","candidate":{candidate, sdpMid, sdpMLineIndex}}`.
@@ -283,6 +283,7 @@
 | 2026-10-17 16:33 | T3.2 | DONE | Implemented Host consent dialog, decline/accept flows, flutter test and analyze clean |
 | 2026-10-17 16:38 | T3.3 | DONE | Added native MediaProjectionService, AndroidManifest permissions, and MainActivity channel, apk build clean |
 | 2026-10-17 16:43 | T3.4 | DONE | Implemented screen capture on Accept, cancellation handling, all 8 flutter tests pass |
+| 2026-10-17 16:52 | T3.5 | DONE | Implemented RTCPeerConnection offer, local ICE exchange, and answer handling, tests pass |
 
 
 
