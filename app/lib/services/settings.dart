@@ -9,7 +9,15 @@ Future<String> getServerUrl() async {
 }
 
 Future<void> setServerUrl(String url) async {
+  String normalized = url.trim();
+  if (normalized.startsWith('https://')) {
+    normalized = 'wss://${normalized.substring(8)}';
+  } else if (normalized.startsWith('http://')) {
+    normalized = 'ws://${normalized.substring(7)}';
+  } else if (normalized.isNotEmpty && !normalized.startsWith('ws://') && !normalized.startsWith('wss://')) {
+    normalized = 'wss://$normalized';
+  }
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(serverUrlKey, url);
+  await prefs.setString(serverUrlKey, normalized);
 }
 

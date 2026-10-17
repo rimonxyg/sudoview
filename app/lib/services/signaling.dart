@@ -9,7 +9,15 @@ class SignalingClient {
 
   Future<void> connect(String url) async {
     close();
-    final uri = Uri.parse(url);
+    String normalized = url.trim();
+    if (normalized.startsWith('https://')) {
+      normalized = 'wss://${normalized.substring(8)}';
+    } else if (normalized.startsWith('http://')) {
+      normalized = 'ws://${normalized.substring(7)}';
+    } else if (!normalized.startsWith('ws://') && !normalized.startsWith('wss://')) {
+      normalized = 'wss://$normalized';
+    }
+    final uri = Uri.parse(normalized);
     final channel = WebSocketChannel.connect(uri);
     await channel.ready;
     _channel = channel;
