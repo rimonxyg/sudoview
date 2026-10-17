@@ -289,6 +289,7 @@
 | 2026-10-17 17:02 | T4.2 | DONE | Implemented RTCPeerConnection, RTCVideoRenderer, answer creation and remote track handling, tests pass |
 | 2026-10-17 17:04 | T4.3 | DONE | Implemented full-screen RTCVideoView with contain fit, black background and Leave button, tests pass |
 | 2026-10-17 17:07 | T4.4 | DONE | Implemented viewer cleanup on ended, peer-left and connection loss with SnackBar, tests pass |
+| 2026-10-17 17:08 | T5.1 | WAITING_USER | Manual test checklist prepared: 1. Server running, Wi-Fi OK; 2. Host code & Viewer wrong code error; 3. Host Accept/Decline dialog; 4. Decline & Accept flows; 5. Viewer live stream view; 6. Host Stop cleanup & notification removal; 7. Viewer Leave cleanup & new session; 8. 5-minute code expiration |
 
 
 
