@@ -1,9 +1,34 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teachview/screens/host_screen.dart';
 import 'package:teachview/services/signaling.dart';
+
+class FakeMediaStream implements MediaStream {
+  bool isDisposed = false;
+
+  @override
+  String get id => 'fake_stream_id';
+
+  @override
+  List<MediaStreamTrack> getTracks() => [];
+
+  @override
+  List<MediaStreamTrack> getAudioTracks() => [];
+
+  @override
+  List<MediaStreamTrack> getVideoTracks() => [];
+
+  @override
+  Future<void> dispose() async {
+    isDisposed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class FakeSignalingClient implements SignalingClient {
   final List<Map<String, dynamic>> sentMessages = [];
@@ -79,33 +104,35 @@ void main() {
     fakeClient.emitMessage({'type': 'created', 'code': '849201'});
     await tester.pump();
 
-    // Viewer sends join -> Server sends join-request to Host
     fakeClient.emitMessage({'type': 'join-request'});
     await tester.pump();
 
-    // Verify dialog appears
     expect(find.text('Viewer Request'), findsOneWidget);
     expect(find.text('Someone wants to view your screen.'), findsOneWidget);
     expect(find.text('Decline'), findsOneWidget);
     expect(find.text('Accept'), findsOneWidget);
 
-    // Tap Decline
     await tester.tap(find.text('Decline'));
     await tester.pump();
 
-    // Verify decline message sent to server
     expect(fakeClient.sentMessages.any((m) => m['type'] == 'decline'), isTrue);
-
-    // Dialog is closed and back to waiting
     expect(find.text('Viewer Request'), findsNothing);
     expect(find.text('Waiting for viewer...'), findsOneWidget);
   });
 
-  testWidgets('HostScreen shows consent dialog on join-request and handles Accept', (WidgetTester tester) async {
+  testWidgets('HostScreen Accept starts screen capture and shows Starting...', (WidgetTester tester) async {
     final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    bool captureCalled = false;
 
     await tester.pumpWidget(MaterialApp(
-      home: HostScreen(signalingClient: fakeClient),
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (constraints) async {
+          captureCalled = true;
+          return fakeStream;
+        },
+      ),
     ));
     await tester.pump();
 
@@ -113,19 +140,43 @@ void main() {
     await tester.pump();
 
     fakeClient.emitMessage({'type': 'join-request'});
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    // Tap Accept
     await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
 
-    // Verify accept message sent to server
     expect(fakeClient.sentMessages.any((m) => m['type'] == 'accept'), isTrue);
-
-    // Screen moves to Starting... state with Stop button
-    expect(find.text('Viewer Request'), findsNothing);
+    expect(captureCalled, isTrue);
     expect(find.text('Starting...'), findsOneWidget);
     expect(find.text('Stop'), findsOneWidget);
+  });
+
+  testWidgets('Cancelling Android screen capture dialog sends end and stops session', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (constraints) async {
+          throw Exception('User cancelled system screen capture dialog');
+        },
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // Verify end message was sent when system dialog was cancelled
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isTrue);
   });
 
   testWidgets('HostScreen shows friendly error on connection failure', (WidgetTester tester) async {

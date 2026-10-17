@@ -1,12 +1,22 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/settings.dart';
 import '../services/signaling.dart';
 
+typedef ScreenCaptureFunction = Future<MediaStream> Function(Map<String, dynamic> constraints);
+
 class HostScreen extends StatefulWidget {
   final SignalingClient? signalingClient;
+  final ScreenCaptureFunction? screenCapture;
 
-  const HostScreen({super.key, this.signalingClient});
+  const HostScreen({
+    super.key,
+    this.signalingClient,
+    this.screenCapture,
+  });
 
   @override
   State<HostScreen> createState() => _HostScreenState();
@@ -15,12 +25,16 @@ class HostScreen extends StatefulWidget {
 class _HostScreenState extends State<HostScreen> {
   late final SignalingClient _signaling;
   StreamSubscription<Map<String, dynamic>>? _subscription;
+  MediaStream? _localStream;
 
   bool _isLoading = true;
   String? _errorMessage;
   String? _code;
   String _statusText = 'Waiting for viewer...';
   bool _isSharingStarted = false;
+
+  static const MethodChannel _projectionChannel =
+      MethodChannel('com.teachview.teachview/media_projection');
 
   @override
   void initState() {
@@ -95,7 +109,7 @@ class _HostScreenState extends State<HostScreen> {
   }
 
   Future<void> _showConsentDialog() async {
-    final result = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
@@ -108,12 +122,26 @@ class _HostScreenState extends State<HostScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop(false);
+                  _signaling.send({'type': 'decline'});
+                  if (mounted) {
+                    setState(() {
+                      _statusText = 'Waiting for viewer...';
+                    });
+                  }
                 },
                 child: const Text('Decline'),
               ),
               FilledButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop(true);
+                  _signaling.send({'type': 'accept'});
+                  if (mounted) {
+                    setState(() {
+                      _isSharingStarted = true;
+                      _statusText = 'Starting...';
+                    });
+                  }
+                  _startCapture();
                 },
                 child: const Text('Accept'),
               ),
@@ -122,29 +150,51 @@ class _HostScreenState extends State<HostScreen> {
         );
       },
     );
+  }
 
-    if (!mounted) return;
+  Future<void> _startCapture() async {
+    try {
+      if (widget.screenCapture == null && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await _projectionChannel.invokeMethod('startService');
+        } catch (_) {}
+      }
 
-    if (result == true) {
-      _signaling.send({'type': 'accept'});
-      setState(() {
-        _isSharingStarted = true;
-        _statusText = 'Starting...';
-      });
-    } else if (result == false) {
-      _signaling.send({'type': 'decline'});
-      setState(() {
-        _statusText = 'Waiting for viewer...';
-      });
+      final constraints = <String, dynamic>{
+        'audio': false,
+        'video': true,
+      };
+
+      if (widget.screenCapture != null) {
+        _localStream = await widget.screenCapture!(constraints);
+      } else {
+        _localStream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      }
+      debugPrint('capture started');
+    } catch (e) {
+      debugPrint('Capture failed or cancelled: $e');
+      _stopSession();
     }
   }
 
-  void _stopSession() {
+  void _stopSession({bool shouldPop = true}) {
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        _projectionChannel.invokeMethod('stopService').catchError((_) {});
+      }
+      _localStream?.getTracks().forEach((track) {
+        track.stop();
+      });
+      _localStream?.dispose();
+      _localStream = null;
+    } catch (_) {}
+
     try {
       _signaling.send({'type': 'end'});
     } catch (_) {}
     _signaling.close();
-    if (mounted) {
+
+    if (shouldPop && mounted) {
       Navigator.of(context).pop();
     }
   }
@@ -152,7 +202,7 @@ class _HostScreenState extends State<HostScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
-    _signaling.close();
+    _stopSession(shouldPop: false);
     super.dispose();
   }
 

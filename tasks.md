@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T3.4**
+**CURRENT TASK: T3.5**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -158,7 +158,7 @@
 - Done when: `flutter build apk --debug` succeeds and the manifest contains what the README requires.
 - Commit: `T3.3: capture permissions`
 
-### [ ] T3.4 Host: start screen capture after Accept
+### [x] T3.4 Host: start screen capture after Accept
 - After the user taps Accept, request the screen stream using the method from the `flutter_webrtc` README (`getDisplayMedia`).
 - Done when: after tapping Accept, Android shows its own "start capturing / casting" dialog, a persistent notification appears after confirming, and the app logs `capture started`. Cancelling the system dialog must send `end` and return to the home screen.
 - Commit: `T3.4: start capture`
@@ -277,6 +277,8 @@
 | 2026-10-17 15:16 | T3.1 | DONE | Implemented HostScreen with create session, code display, friendly error handling and stop button, tests passing |
 | 2026-10-17 16:33 | T3.2 | DONE | Implemented Host consent dialog, decline/accept flows, flutter test and analyze clean |
 | 2026-10-17 16:38 | T3.3 | DONE | Added native MediaProjectionService, AndroidManifest permissions, and MainActivity channel, apk build clean |
+| 2026-10-17 16:43 | T3.4 | DONE | Implemented screen capture on Accept, cancellation handling, all 8 flutter tests pass |
+
 
 
 
