@@ -76,3 +76,4 @@ class MediaProjectionService : Service() {
         super.onDestroy()
     }
 }
+

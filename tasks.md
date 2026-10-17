@@ -2,6 +2,11 @@
 
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
+> 
+> **STRICT EXECUTION WORKFLOW**:
+> - **Local PC:** Code editing, fast unit/widget tests (`flutter test`), static analysis (`flutter analyze`), and Git operations (`commit`, `push`) ONLY.
+> - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
+
 
 **CURRENT TASK: T3.5**
 

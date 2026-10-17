@@ -160,6 +160,8 @@ All messages are JSON text over WebSocket. Every message has a `type` field.
 10. If power or internet was lost mid-task: run `git status` and `git diff`, check what is half done, finish that same task, and only then continue.
 11. Ask the user only when a task says to, or when you are BLOCKED.
 12. **Persistent project settings:** Repo name is SudoView (`https://github.com/rimonxyg/sudoview.git`) and default signaling port is `8082` (due to local Docker port conflicts on 8080 and 8081 reserved by user). Never forget or revert these choices across sessions and restarts.
+13. **Cloud-First Execution & No Local Heavy Builds:** NEVER run heavy compilation or emulator tasks (`flutter build apk`, Gradle full assemble, Android emulators, or continuous device runs) on the local physical PC to prevent CPU overheating, RAM exhaustion, and hardware lag. All heavy builds, runs, and end-to-end device tests are strictly handled online in the cloud (GitHub Codespaces / Cloud CI). On the local PC, the agent only performs code editing, fast static analysis (`flutter analyze`), lightweight tests (`flutter test`), and Git operations (`git commit`, `git push`).
+
 
 ---
 
@@ -189,5 +191,7 @@ Remote control (taps/swipes), Accessibility Service, audio, file transfer, accou
 | 2026-10-16 | Project/repo name is SudoView | User set repository to sudoview (`https://github.com/rimonxyg/sudoview.git`) |
 | 2026-10-16 | Signaling server default port is 8082 | Port 8080 is occupied by OSCP Docker container and 8081 is reserved by user |
 | 2026-10-17 | Repository visibility set to Private | Allows tracking context.md and tasks.md securely and enables GitHub Codespaces cloud dev |
+| 2026-10-17 | Cloud-Only Build & Run Workflow | Prevent local laptop thermal throttling and RAM saturation; heavy Gradle builds, emulators, and full app runs are offloaded strictly to GitHub Codespaces |
+
 
 
