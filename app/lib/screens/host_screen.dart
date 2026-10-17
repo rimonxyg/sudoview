@@ -20,6 +20,7 @@ class _HostScreenState extends State<HostScreen> {
   String? _errorMessage;
   String? _code;
   String _statusText = 'Waiting for viewer...';
+  bool _isSharingStarted = false;
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _HostScreenState extends State<HostScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _isSharingStarted = false;
     });
 
     try {
@@ -77,14 +79,62 @@ class _HostScreenState extends State<HostScreen> {
         _isLoading = false;
         _statusText = 'Waiting for viewer...';
       });
+    } else if (type == 'join-request') {
+      _showConsentDialog();
     } else if (type == 'ended' || type == 'peer-left') {
       setState(() {
-        _statusText = type == 'peer-left' ? 'Viewer disconnected' : 'Session ended';
+        _isSharingStarted = false;
+        _statusText = type == 'peer-left' ? 'Waiting for viewer...' : 'Session ended';
       });
     } else if (type == 'error') {
       setState(() {
         _errorMessage = 'Server error: ${message['message']}';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _showConsentDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Viewer Request'),
+            content: const Text('Someone wants to view your screen.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                },
+                child: const Text('Decline'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: const Text('Accept'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (result == true) {
+      _signaling.send({'type': 'accept'});
+      setState(() {
+        _isSharingStarted = true;
+        _statusText = 'Starting...';
+      });
+    } else if (result == false) {
+      _signaling.send({'type': 'decline'});
+      setState(() {
+        _statusText = 'Waiting for viewer...';
       });
     }
   }
@@ -166,6 +216,32 @@ class _HostScreenState extends State<HostScreen> {
                 child: const Text('Retry'),
               ),
             ],
+          ),
+        ],
+      );
+    }
+
+    if (_isSharingStarted) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Starting...',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 48),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            icon: const Icon(Icons.stop),
+            label: const Text('Stop'),
+            onPressed: _stopSession,
           ),
         ],
       );

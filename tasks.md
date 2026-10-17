@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T3.2**
+**CURRENT TASK: T3.3**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -145,7 +145,7 @@
 - Done when: with the server running (`npm start`) and the phone on the same Wi-Fi, the phone shows a 6-digit code that matches what the server created.
 - Commit: `T3.1: host shows code`
 
-### [ ] T3.2 Host: accept or decline dialog
+### [x] T3.2 Host: accept or decline dialog
 - When `join-request` arrives show an AlertDialog: "Someone wants to view your screen." with buttons **Decline** and **Accept**. The dialog cannot be dismissed by tapping outside.
 - Decline sends `{"type":"decline"}` and the screen goes back to "Waiting for viewer...".
 - Accept sends `{"type":"accept"}` and moves to the next step (which does nothing yet except show "Starting..." text).
@@ -275,6 +275,8 @@
 | 2026-10-17 15:10 | T2.6 | DONE | Implemented SignalingClient in services/signaling.dart, unit tests and flutter analyze clean |
 | 2026-10-17 15:13 | T2.7 | DONE | Added INTERNET permission and usesCleartextTraffic with DEV ONLY comment, flutter build apk --debug succeeded |
 | 2026-10-17 15:16 | T3.1 | DONE | Implemented HostScreen with create session, code display, friendly error handling and stop button, tests passing |
+| 2026-10-17 16:33 | T3.2 | DONE | Implemented Host consent dialog, decline/accept flows, flutter test and analyze clean |
+
 
 
 
