@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T4.1**
+**CURRENT TASK: T4.2**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -186,7 +186,7 @@
 
 ## PHASE 4: Viewer side (watches the screen)
 
-### [ ] T4.1 Viewer screen: enter code and join
+### [x] T4.1 Viewer screen: enter code and join
 - Text field (numbers only, max 6 digits) and a **Join** button.
 - On Join: connect, send `{"type":"join","code":...}`. Show states: "Waiting for host to accept...", "Host declined", and error text for `invalid_code`, `room_busy`, `too_many_attempts`.
 - Done when: a wrong code shows a clear message, and a correct code makes the host phone show the Accept dialog.
@@ -285,6 +285,7 @@
 | 2026-10-17 16:43 | T3.4 | DONE | Implemented screen capture on Accept, cancellation handling, all 8 flutter tests pass |
 | 2026-10-17 16:52 | T3.5 | DONE | Implemented RTCPeerConnection offer, local ICE exchange, and answer handling, tests pass |
 | 2026-10-17 16:56 | T3.6 | DONE | Implemented host stop & cleanup for media tracks, peer connection, native service and endings, tests pass |
+| 2026-10-17 16:59 | T4.1 | DONE | Implemented ViewerScreen code input, join flow, waiting/declined/error states, tests pass |
 
 
 
