@@ -3,7 +3,7 @@
 > Read `context.md` first. Do ONE task at a time, in order. Never skip.
 > After each task: tick the box, update CURRENT TASK, add a Progress Log line, then `git add -A`, `git commit`, `git push`.
 
-**CURRENT TASK: T3.3**
+**CURRENT TASK: T3.4**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -152,7 +152,7 @@
 - Done when: using a one-off node script as the viewer, the dialog appears, and both buttons produce the right server messages.
 - Commit: `T3.2: host accept decline`
 
-### [ ] T3.3 Android permissions and foreground service for capture
+### [x] T3.3 Android permissions and foreground service for capture
 - Open the `flutter_webrtc` README section about screen sharing on Android. Follow it exactly for: manifest permissions, the foreground service declaration (type `mediaProjection`), and any notification permission.
 - Do not invent your own service. Use what the README says.
 - Done when: `flutter build apk --debug` succeeds and the manifest contains what the README requires.
@@ -276,6 +276,8 @@
 | 2026-10-17 15:13 | T2.7 | DONE | Added INTERNET permission and usesCleartextTraffic with DEV ONLY comment, flutter build apk --debug succeeded |
 | 2026-10-17 15:16 | T3.1 | DONE | Implemented HostScreen with create session, code display, friendly error handling and stop button, tests passing |
 | 2026-10-17 16:33 | T3.2 | DONE | Implemented Host consent dialog, decline/accept flows, flutter test and analyze clean |
+| 2026-10-17 16:38 | T3.3 | DONE | Added native MediaProjectionService, AndroidManifest permissions, and MainActivity channel, apk build clean |
+
 
 
 
