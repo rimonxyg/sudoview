@@ -1,9 +1,57 @@
 import 'package:flutter/material.dart';
+import '../services/settings.dart';
 import 'host_screen.dart';
 import 'viewer_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  Future<void> _showSettingsDialog(BuildContext context) async {
+    final currentUrl = await getServerUrl();
+    if (!context.mounted) return;
+
+    final controller = TextEditingController(text: currentUrl);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Server Settings'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Signaling Server URL',
+              hintText: 'e.g. ws://192.168.1.100:8082',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.url,
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final newUrl = controller.text.trim();
+                if (newUrl.isNotEmpty) {
+                  await setServerUrl(newUrl);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Server URL saved')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,9 +61,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Settings dialog placeholder for T2.5
-            },
+            onPressed: () => _showSettingsDialog(context),
           ),
         ],
       ),
