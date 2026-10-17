@@ -192,6 +192,50 @@ Remote control (taps/swipes), Accessibility Service, audio, file transfer, accou
 | 2026-10-16 | Signaling server default port is 8082 | Port 8080 is occupied by OSCP Docker container and 8081 is reserved by user |
 | 2026-10-17 | Repository visibility set to Private | Allows tracking context.md and tasks.md securely and enables GitHub Codespaces cloud dev |
 | 2026-10-17 | Cloud-Only Build & Run Workflow | Prevent local laptop thermal throttling and RAM saturation; heavy Gradle builds, emulators, and full app runs are offloaded strictly to GitHub Codespaces |
+| 2026-10-17 | Automated GitHub Actions Cloud CI | Added `.github/workflows/build-apk.yml` to compile `app-debug.apk` in GitHub cloud runners (16GB RAM) and publish artifacts automatically on every push |
+| 2026-10-17 | Container Low-Memory Gradle Tuning | Set `org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m`, `org.gradle.parallel=false`, `org.gradle.workers.max=1`, `org.gradle.daemon=false` in `gradle.properties` to eliminate Linux kernel OOM kills in Codespaces |
+| 2026-10-17 | URL Auto-Normalization | In `SignalingClient` & `Settings`, auto-normalize `https://` -> `wss://`, `http://` -> `ws://`, and strip trailing slashes to eliminate `ArgumentError: only ws: and wss: schemes are supported` |
+| 2026-10-17 | Flutter Web Platform Enabled | Added `app/web` platform support for browser-based Viewer testing without needing a second physical Android phone |
 
+---
 
+## 11. Operational Reference & Tomorrow Catch-Up
 
+### Current Status (as of 2026-10-17):
+- **Phases Complete**: Phase 0 (Setup), Phase 1 (Signaling Server), Phase 2 (App Skeleton), Phase 3 (Host Screen Sharing), Phase 4 (Viewer Video Playback).
+- **Current Task**: `T5.1` (Manual Test Checklist).
+- **Next Tasks**: `T5.2` (Connection status), `T5.3` (Session timer & auto-stop), `T5.4` (README), `T5.5` (Final release & `v0.1.0` tag).
+- **Automated Tests**: 8/8 server tests pass (`npm test`), 17/17 Flutter tests pass (`flutter analyze && flutter test`).
+
+### GitHub & Cloud Configuration:
+- **Repository**: Private Git repo at `https://github.com/rimonxyg/sudoview.git`
+- **GitHub Actions Cloud CI**: `.github/workflows/build-apk.yml` runs on every push to `main`. Download APKs from GitHub Actions -> latest run -> Artifacts (`app-debug.zip`).
+- **Codespace**: `jubilant-train-x54gq7vjrvrpf67vx.github.dev`
+  - Signaling port `8082` (Address: `wss://jubilant-train-x54gq7vjrvrpf67vx-8082.app.github.dev`) -> **MUST be set to `Public`** in Codespaces Ports tab.
+  - Web viewer port `8085` (Address: `https://jubilant-train-x54gq7vjrvrpf67vx-8085.app.github.dev`).
+
+### Essential Commands:
+- **Signaling Server (Local LAN)**:
+  ```bash
+  cd server && node server.js
+  # URL to enter in App Settings: ws://192.168.0.148:8082
+  ```
+- **Signaling Server (Codespaces Background)**:
+  ```bash
+  cd /workspaces/sudoview/server && nohup npm start > /dev/null 2>&1 &
+  ```
+- **Web App Server (for browser viewing)**:
+  ```bash
+  cd app && flutter build web
+  cd app && nohup python3 -m http.server 8085 --directory build/web > /dev/null 2>&1 &
+  ```
+- **Verification Commands**:
+  ```bash
+  cd server && npm test
+  cd app && flutter analyze && flutter test
+  ```
+
+### Critical Rules & Gotchas:
+1. **Zero Heavy Local Compilation**: Do NOT run `flutter build apk` or local Android emulators on the laptop. All APK builds come from GitHub Actions CI.
+2. **WebSocket Scheme in Browsers**: Direct browser address bars do NOT accept `ws://` (`ERR_UNKNOWN_URL_SCHEME`). Enter the WebSocket URL inside the TeachView App Settings dialog (⚙️ icon).
+3. **Codespaces Port Visibility**: If the phone cannot connect to Codespace port 8082, ensure port 8082 is set to **Public** in the Codespaces Ports tab.
