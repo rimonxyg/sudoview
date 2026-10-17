@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T4.3**
+**CURRENT TASK: T4.4**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -200,7 +200,7 @@
 - Done when: logs show offer received, answer sent, and a remote track received.
 - Commit: `T4.2: viewer webrtc`
 
-### [ ] T4.3 Viewer: show the video
+### [x] T4.3 Viewer: show the video
 - After the first remote track arrives show `RTCVideoView` full screen with `objectFit` contain on a black background.
 - Add a small **Leave** button: sends `end`, disposes the renderer and peer connection, closes the socket, goes home.
 - Done when: the viewer phone shows the host's screen live.
@@ -287,6 +287,7 @@
 | 2026-10-17 16:56 | T3.6 | DONE | Implemented host stop & cleanup for media tracks, peer connection, native service and endings, tests pass |
 | 2026-10-17 16:59 | T4.1 | DONE | Implemented ViewerScreen code input, join flow, waiting/declined/error states, tests pass |
 | 2026-10-17 17:02 | T4.2 | DONE | Implemented RTCPeerConnection, RTCVideoRenderer, answer creation and remote track handling, tests pass |
+| 2026-10-17 17:04 | T4.3 | DONE | Implemented full-screen RTCVideoView with contain fit, black background and Leave button, tests pass |
 
 
 

@@ -51,11 +51,34 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   @override
   void dispose() {
-    _subscription?.cancel();
-    _signaling.close();
-    _cleanupWebRTC();
+    _leaveSession(
+      sendEnd: _state == ViewerState.waitingForHost ||
+          _state == ViewerState.accepted ||
+          _hasRemoteTrack,
+    );
     _codeController.dispose();
     super.dispose();
+  }
+
+  bool _isCleaningUp = false;
+
+  Future<void> _leaveSession({bool sendEnd = true}) async {
+    if (_isCleaningUp) return;
+    _isCleaningUp = true;
+
+    if (sendEnd) {
+      try {
+        _signaling.send({'type': 'end'});
+      } catch (_) {}
+    }
+
+    _subscription?.cancel();
+    _signaling.close();
+    await _cleanupWebRTC();
+
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _cleanupWebRTC() async {
@@ -291,11 +314,55 @@ class _ViewerScreenState extends State<ViewerScreen> {
       _errorMessage = null;
       _statusText = null;
       _hasRemoteTrack = false;
+      _isCleaningUp = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_hasRemoteTrack && _videoRenderer != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            _leaveSession();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Center(
+                  child: RTCVideoView(
+                    _videoRenderer!,
+                    objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(220, 211, 47, 47),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _leaveSession,
+                      icon: const Icon(Icons.call_end, size: 18),
+                      label: const Text('Leave'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Watch a screen'),

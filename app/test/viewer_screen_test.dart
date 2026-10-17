@@ -36,14 +36,23 @@ class FakeMediaStream implements MediaStream {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class FakeRTCVideoRenderer implements RTCVideoRenderer {
+class FakeRTCVideoRenderer extends ValueNotifier<RTCVideoValue> implements RTCVideoRenderer {
+  FakeRTCVideoRenderer() : super(RTCVideoValue.empty);
+
   bool isInitialized = false;
   bool isDisposed = false;
   MediaStream? src;
 
   @override
+  bool get renderVideo => false;
+
+  @override
+  int? get textureId => null;
+
+  @override
   Future<void> initialize() async {
     isInitialized = true;
+    value = const RTCVideoValue(width: 1920, height: 1080);
   }
 
   @override
@@ -57,6 +66,7 @@ class FakeRTCVideoRenderer implements RTCVideoRenderer {
   @override
   Future<void> dispose() async {
     isDisposed = true;
+    super.dispose();
   }
 
   @override
@@ -352,6 +362,16 @@ void main() {
     await tester.pump();
 
     expect(fakeRenderer.srcObject, equals(fakeStream));
-    expect(find.text('Connected!'), findsOneWidget);
+    expect(find.byType(RTCVideoView), findsOneWidget);
+    expect(find.text('Leave'), findsOneWidget);
+
+    // Tap Leave button
+    await tester.tap(find.text('Leave'));
+    await tester.pump();
+
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isTrue);
+    expect(fakeClient.isClosed, isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(fakeRenderer.isDisposed, isTrue);
   });
 }
