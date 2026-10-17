@@ -11,9 +11,6 @@ local.properties
 .kotlin/
 .gradle/
 
-# Internal task tracking & context
-context.md
-tasks.md
 *.docx
 .~lock.*
 
