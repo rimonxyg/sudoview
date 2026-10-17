@@ -123,10 +123,13 @@ class _HostScreenState extends State<HostScreen> {
         }
       }
     } else if (type == 'ended' || type == 'peer-left') {
-      setState(() {
-        _isSharingStarted = false;
-        _statusText = type == 'peer-left' ? 'Waiting for viewer...' : 'Session ended';
-      });
+      final message = type == 'peer-left' ? 'Viewer disconnected' : 'Session ended';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+      _stopSession(sendEnd: false);
     } else if (type == 'error') {
       setState(() {
         _errorMessage = 'Server error: ${message['message']}';
@@ -135,11 +138,14 @@ class _HostScreenState extends State<HostScreen> {
     }
   }
 
+  BuildContext? _consentDialogContext;
+
   Future<void> _showConsentDialog() async {
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
+        _consentDialogContext = dialogContext;
         return PopScope(
           canPop: false,
           child: AlertDialog(
@@ -148,6 +154,7 @@ class _HostScreenState extends State<HostScreen> {
             actions: [
               TextButton(
                 onPressed: () {
+                  _consentDialogContext = null;
                   Navigator.of(dialogContext).pop(false);
                   _signaling.send({'type': 'decline'});
                   if (mounted) {
@@ -160,6 +167,7 @@ class _HostScreenState extends State<HostScreen> {
               ),
               FilledButton(
                 onPressed: () {
+                  _consentDialogContext = null;
                   Navigator.of(dialogContext).pop(true);
                   _signaling.send({'type': 'accept'});
                   if (mounted) {
@@ -177,6 +185,7 @@ class _HostScreenState extends State<HostScreen> {
         );
       },
     );
+    _consentDialogContext = null;
   }
 
   Future<void> _startCapture() async {
@@ -274,11 +283,27 @@ class _HostScreenState extends State<HostScreen> {
     }
   }
 
-  void _stopSession({bool shouldPop = true}) {
-    try {
-      if (defaultTargetPlatform == TargetPlatform.android) {
+  bool _isCleaningUp = false;
+  bool _canPop = false;
+
+  void _stopSession({bool shouldPop = true, bool sendEnd = true}) {
+    if (_isCleaningUp) return;
+    _isCleaningUp = true;
+
+    if (sendEnd) {
+      try {
+        _signaling.send({'type': 'end'});
+      } catch (_) {}
+    }
+    _signaling.close();
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
         _projectionChannel.invokeMethod('stopService').catchError((_) {});
-      }
+      } catch (_) {}
+    }
+
+    try {
       _localStream?.getTracks().forEach((track) {
         track.stop();
       });
@@ -292,13 +317,22 @@ class _HostScreenState extends State<HostScreen> {
       _peerConnection = null;
     } catch (_) {}
 
-    try {
-      _signaling.send({'type': 'end'});
-    } catch (_) {}
-    _signaling.close();
+    if (_consentDialogContext != null) {
+      try {
+        Navigator.of(_consentDialogContext!).pop();
+      } catch (_) {}
+      _consentDialogContext = null;
+    }
 
     if (shouldPop && mounted) {
-      Navigator.of(context).pop();
+      setState(() {
+        _canPop = true;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
     }
   }
 
@@ -312,7 +346,7 @@ class _HostScreenState extends State<HostScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _canPop,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _stopSession();

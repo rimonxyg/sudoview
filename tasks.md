@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T3.6**
+**CURRENT TASK: T4.1**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -176,7 +176,7 @@
 - Done when: logs show offer sent, answer received, and ICE state reaching `connected` or `completed`. (Full check happens after Phase 4.)
 - Commit: `T3.5: host webrtc`
 
-### [ ] T3.6 Host: stop and cleanup
+### [x] T3.6 Host: stop and cleanup
 - The Stop button must: stop all stream tracks, close the peer connection, stop the screen-capture foreground service, send `end`, close the socket, and go back to the home screen.
 - Also run the same cleanup when `peer-left` or `ended` arrives, or when the screen is closed.
 - Done when: after Stop, the notification disappears and the status-bar casting icon is gone.
@@ -284,6 +284,7 @@
 | 2026-10-17 16:38 | T3.3 | DONE | Added native MediaProjectionService, AndroidManifest permissions, and MainActivity channel, apk build clean |
 | 2026-10-17 16:43 | T3.4 | DONE | Implemented screen capture on Accept, cancellation handling, all 8 flutter tests pass |
 | 2026-10-17 16:52 | T3.5 | DONE | Implemented RTCPeerConnection offer, local ICE exchange, and answer handling, tests pass |
+| 2026-10-17 16:56 | T3.6 | DONE | Implemented host stop & cleanup for media tracks, peer connection, native service and endings, tests pass |
 
 
 

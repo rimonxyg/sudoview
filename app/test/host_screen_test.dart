@@ -6,20 +6,37 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teachview/screens/host_screen.dart';
 import 'package:teachview/services/signaling.dart';
 
+class FakeMediaStreamTrack implements MediaStreamTrack {
+  bool isStopped = false;
+
+  @override
+  Future<bool> stop() async {
+    isStopped = true;
+    return true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeMediaStream implements MediaStream {
   bool isDisposed = false;
+  final List<MediaStreamTrack> tracks;
+
+  FakeMediaStream([List<MediaStreamTrack>? customTracks])
+      : tracks = customTracks ?? [FakeMediaStreamTrack()];
 
   @override
   String get id => 'fake_stream_id';
 
   @override
-  List<MediaStreamTrack> getTracks() => [];
+  List<MediaStreamTrack> getTracks() => tracks;
 
   @override
   List<MediaStreamTrack> getAudioTracks() => [];
 
   @override
-  List<MediaStreamTrack> getVideoTracks() => [];
+  List<MediaStreamTrack> getVideoTracks() => tracks;
 
   @override
   Future<void> dispose() async {
@@ -275,9 +292,83 @@ void main() {
       home: HostScreen(signalingClient: fakeClient),
     ));
     await tester.pump();
-
     expect(find.textContaining('Could not connect to signaling server'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
     expect(find.text('Go back'), findsOneWidget);
+  });
+
+  testWidgets('HostScreen Stop button cleanly disposes tracks, closes PC, sends end, and closes socket', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (_) async => fakeStream,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // Verify stream & PC active
+    expect(fakeStream.isDisposed, isFalse);
+    expect(fakePC.isClosed, isFalse);
+
+    // Now tap Stop
+    await tester.tap(find.text('Stop'));
+    await tester.pump();
+
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isTrue);
+    expect(fakeClient.isClosed, isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(fakeStream.isDisposed, isTrue);
+    expect((fakeStream.tracks.first as FakeMediaStreamTrack).isStopped, isTrue);
+  });
+
+  testWidgets('HostScreen cleans up when peer-left or ended arrives', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (_) async => fakeStream,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // Emit ended from remote side
+    fakeClient.emitMessage({'type': 'ended'});
+    await tester.pump();
+
+    // Cleaned up, but did NOT send 'end' back
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isFalse);
+    expect(fakeClient.isClosed, isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(fakeStream.isDisposed, isTrue);
+    expect(find.text('Session ended'), findsOneWidget);
   });
 }
