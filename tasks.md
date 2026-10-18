@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T5.5**
+**CURRENT TASK: ALL TASKS COMPLETED (v0.1.0 Released)**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -242,7 +242,7 @@
 - Done when: the README renders properly on GitHub.
 - Commit: `T5.4: readme`
 
-### [ ] T5.5 Final check and release
+### [x] T5.5 Final check and release
 - Run `npm test` in `server/` and `flutter analyze` in `app/`. Both must be clean.
 - Make sure `git status` is clean and `git push` is done.
 - Create tag: `git tag v0.1.0` and `git push origin v0.1.0`.
@@ -294,6 +294,7 @@
 | 2026-10-18 18:43 | T5.2 | DONE | Connection status indicator (Connecting, Connected, Disconnected) added to Host and Viewer, 19/19 tests pass |
 | 2026-10-18 18:46 | T5.3 | DONE | Host session duration timer (mm:ss) and 30-min auto-stop implemented, 21/21 tests pass |
 | 2026-10-18 18:47 | T5.4 | DONE | Comprehensive README.md updated with architecture, security model, and CI instructions |
+| 2026-10-18 18:49 | T5.5 | DONE | Final verification clean (npm test 8/8, flutter analyze clean, flutter test 21/21). Tag v0.1.0 created and pushed |
 
 
 
