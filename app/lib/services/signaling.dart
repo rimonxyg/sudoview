@@ -19,7 +19,16 @@ class SignalingClient {
     }
     final uri = Uri.parse(normalized);
     final channel = WebSocketChannel.connect(uri);
-    await channel.ready;
+    await channel.ready.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        channel.sink.close();
+        throw TimeoutException(
+          'Could not connect to server within 10 seconds. '
+          'Check that the server URL is correct and reachable.',
+        );
+      },
+    );
     _channel = channel;
 
     _controller = StreamController<Map<String, dynamic>>.broadcast();
