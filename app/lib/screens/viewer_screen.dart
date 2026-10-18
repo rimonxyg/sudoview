@@ -42,6 +42,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
   ViewerState _state = ViewerState.idle;
   String? _errorMessage;
   String? _statusText;
+  String? _connectionStatus;
 
   @override
   void initState() {
@@ -113,6 +114,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
       await _videoRenderer?.dispose();
       _videoRenderer = null;
     } catch (_) {}
+
+    _connectionStatus = null;
   }
 
   Future<void> _joinSession() async {
@@ -195,6 +198,53 @@ class _ViewerScreenState extends State<ViewerScreen> {
           : await createPeerConnection(configuration);
 
       _peerConnection = pc;
+
+      if (mounted) {
+        setState(() {
+          _connectionStatus = 'Connecting';
+        });
+      }
+
+      pc.onConnectionState = (RTCPeerConnectionState state) {
+        debugPrint('Viewer peer connection state: $state');
+        if (!mounted) return;
+        setState(() {
+          switch (state) {
+            case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+              _connectionStatus = 'Connected';
+              break;
+            case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
+            case RTCPeerConnectionState.RTCPeerConnectionStateNew:
+              _connectionStatus = 'Connecting';
+              break;
+            case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+            case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+            case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+              _connectionStatus = 'Disconnected';
+              break;
+          }
+        });
+      };
+
+      pc.onIceConnectionState = (RTCIceConnectionState state) {
+        debugPrint('Viewer ICE connection state: $state');
+        if (!mounted) return;
+        setState(() {
+          if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+              state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
+            _connectionStatus = 'Connected';
+          } else if (state == RTCIceConnectionState.RTCIceConnectionStateChecking ||
+              state == RTCIceConnectionState.RTCIceConnectionStateNew) {
+            if (_connectionStatus != 'Connected') {
+              _connectionStatus = 'Connecting';
+            }
+          } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
+              state == RTCIceConnectionState.RTCIceConnectionStateFailed ||
+              state == RTCIceConnectionState.RTCIceConnectionStateClosed) {
+            _connectionStatus = 'Disconnected';
+          }
+        });
+      };
 
       pc.onIceCandidate = (RTCIceCandidate candidate) {
         if (candidate.candidate != null) {
@@ -331,6 +381,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
       _state = ViewerState.idle;
       _errorMessage = null;
       _statusText = null;
+      _connectionStatus = null;
       _hasRemoteTrack = false;
       _isCleaningUp = false;
     });
@@ -359,19 +410,53 @@ class _ViewerScreenState extends State<ViewerScreen> {
                 ),
               ),
               SafeArea(
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(220, 211, 47, 47),
-                        foregroundColor: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (_connectionStatus != null)
+                        Container(
+                          key: const Key('viewer_connection_status'),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.circle,
+                                size: 10,
+                                color: _connectionStatus == 'Connected'
+                                    ? Colors.green
+                                    : (_connectionStatus == 'Connecting' ? Colors.orange : Colors.red),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _connectionStatus!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      FilledButton.tonalIcon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(220, 211, 47, 47),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _leaveSession,
+                        icon: const Icon(Icons.call_end, size: 18),
+                        label: const Text('Leave'),
                       ),
-                      onPressed: _leaveSession,
-                      icon: const Icon(Icons.call_end, size: 18),
-                      label: const Text('Leave'),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -384,6 +469,39 @@ class _ViewerScreenState extends State<ViewerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Watch a screen'),
+        actions: [
+          if (_connectionStatus != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Center(
+                child: Container(
+                  key: const Key('viewer_appbar_connection_status'),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        size: 10,
+                        color: _connectionStatus == 'Connected'
+                            ? Colors.green
+                            : (_connectionStatus == 'Connecting' ? Colors.orange : Colors.red),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _connectionStatus!,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(

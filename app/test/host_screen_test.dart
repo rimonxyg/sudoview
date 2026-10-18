@@ -60,6 +60,9 @@ class FakeRTCPeerConnection implements RTCPeerConnection {
   Function(RTCIceConnectionState state)? onIceConnectionState;
 
   @override
+  Function(RTCPeerConnectionState state)? onConnectionState;
+
+  @override
   Future<RTCRtpSender> addTrack(MediaStreamTrack track, [MediaStream? stream]) async {
     return FakeRtpSender();
   }
@@ -370,5 +373,43 @@ void main() {
     expect(fakePC.isClosed, isTrue);
     expect(fakeStream.isDisposed, isTrue);
     expect(find.text('Session ended'), findsOneWidget);
+  });
+
+  testWidgets('HostScreen displays connection status indicator (Connecting, Connected, Disconnected)', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (_) async => fakeStream,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // While starting WebRTC, status is Connecting
+    expect(find.text('Connecting'), findsWidgets);
+
+    // Simulate connection state changing to Connected
+    fakePC.onConnectionState?.call(RTCPeerConnectionState.RTCPeerConnectionStateConnected);
+    await tester.pump();
+    expect(find.text('Connected'), findsWidgets);
+
+    // Simulate connection state changing to Disconnected
+    fakePC.onConnectionState?.call(RTCPeerConnectionState.RTCPeerConnectionStateDisconnected);
+    await tester.pump();
+    expect(find.text('Disconnected'), findsWidgets);
   });
 }

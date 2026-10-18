@@ -36,6 +36,7 @@ class _HostScreenState extends State<HostScreen> {
   String? _code;
   String _statusText = 'Waiting for viewer...';
   bool _isSharingStarted = false;
+  String? _connectionStatus;
 
   static const MethodChannel _projectionChannel =
       MethodChannel('com.teachview.teachview/media_projection');
@@ -52,6 +53,7 @@ class _HostScreenState extends State<HostScreen> {
       _isLoading = true;
       _errorMessage = null;
       _isSharingStarted = false;
+      _connectionStatus = null;
     });
 
     try {
@@ -249,16 +251,53 @@ class _HostScreenState extends State<HostScreen> {
         }
       };
 
+      if (mounted) {
+        setState(() {
+          _connectionStatus = 'Connecting';
+        });
+      }
+
+      pc.onConnectionState = (RTCPeerConnectionState state) {
+        debugPrint('Peer connection state: $state');
+        if (!mounted) return;
+        setState(() {
+          switch (state) {
+            case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+              _connectionStatus = 'Connected';
+              _statusText = 'Screen sharing active';
+              break;
+            case RTCPeerConnectionState.RTCPeerConnectionStateConnecting:
+            case RTCPeerConnectionState.RTCPeerConnectionStateNew:
+              _connectionStatus = 'Connecting';
+              break;
+            case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+            case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+            case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+              _connectionStatus = 'Disconnected';
+              break;
+          }
+        });
+      };
+
       pc.onIceConnectionState = (RTCIceConnectionState state) {
         debugPrint('ICE connection state: $state');
-        if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
-            state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
-          if (mounted) {
-            setState(() {
-              _statusText = 'Screen sharing active';
-            });
+        if (!mounted) return;
+        setState(() {
+          if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+              state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
+            _connectionStatus = 'Connected';
+            _statusText = 'Screen sharing active';
+          } else if (state == RTCIceConnectionState.RTCIceConnectionStateChecking ||
+              state == RTCIceConnectionState.RTCIceConnectionStateNew) {
+            if (_connectionStatus != 'Connected') {
+              _connectionStatus = 'Connecting';
+            }
+          } else if (state == RTCIceConnectionState.RTCIceConnectionStateDisconnected ||
+              state == RTCIceConnectionState.RTCIceConnectionStateFailed ||
+              state == RTCIceConnectionState.RTCIceConnectionStateClosed) {
+            _connectionStatus = 'Disconnected';
           }
-        }
+        });
       };
 
       final offerConstraints = <String, dynamic>{
@@ -324,6 +363,7 @@ class _HostScreenState extends State<HostScreen> {
       _consentDialogContext = null;
     }
 
+    _connectionStatus = 'Disconnected';
     if (shouldPop && mounted) {
       setState(() {
         _canPop = true;
@@ -355,6 +395,39 @@ class _HostScreenState extends State<HostScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Share my screen'),
+          actions: [
+            if (_connectionStatus != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Center(
+                  child: Container(
+                    key: const Key('host_connection_status'),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: _connectionStatus == 'Connected'
+                              ? Colors.green
+                              : (_connectionStatus == 'Connecting' ? Colors.orange : Colors.red),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _connectionStatus!,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         body: Center(
           child: Padding(
@@ -416,6 +489,18 @@ class _HostScreenState extends State<HostScreen> {
             'Starting...',
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: 12),
+          if (_connectionStatus != null)
+            Text(
+              _connectionStatus!,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: _connectionStatus == 'Connected'
+                    ? Colors.green
+                    : (_connectionStatus == 'Connecting' ? Colors.orange : Colors.red),
+              ),
+            ),
           const SizedBox(height: 24),
           const CircularProgressIndicator(),
           const SizedBox(height: 48),

@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T5.2**
+**CURRENT TASK: T5.3**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -227,7 +227,7 @@
   8. Code expires after 5 minutes unused.
 - Fix any failure as a new sub-task `T5.1a`, `T5.1b` and so on, each committed separately.
 
-### [ ] T5.2 Connection status indicator
+### [x] T5.2 Connection status indicator
 - On both screens show a small status text from the peer connection state: Connecting, Connected, Disconnected.
 - Done when: the status changes correctly during a session.
 - Commit: `T5.2: connection status`
@@ -291,6 +291,7 @@
 | 2026-10-17 17:07 | T4.4 | DONE | Implemented viewer cleanup on ended, peer-left and connection loss with SnackBar, tests pass |
 | 2026-10-17 17:08 | T5.1 | WAITING_USER | Manual test checklist prepared: 1. Server running, Wi-Fi OK; 2. Host code & Viewer wrong code error; 3. Host Accept/Decline dialog; 4. Decline & Accept flows; 5. Viewer live stream view; 6. Host Stop cleanup & notification removal; 7. Viewer Leave cleanup & new session; 8. 5-minute code expiration |
 | 2026-10-18 18:35 | T5.1 | DONE | Manual test verified and approved to proceed to polish phase |
+| 2026-10-18 18:43 | T5.2 | DONE | Connection status indicator (Connecting, Connected, Disconnected) added to Host and Viewer, 19/19 tests pass |
 
 
 
