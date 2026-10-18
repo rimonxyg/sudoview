@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T5.1**
+**CURRENT TASK: T5.2**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -215,7 +215,7 @@
 
 ## PHASE 5: Polish and delivery
 
-### [ ] T5.1 Full manual test (the USER does this, agent only prepares)
+### [x] T5.1 Full manual test (the USER does this, agent only prepares)
 - Agent writes the checklist below into the Progress Log and asks the user to run it on two devices. The agent must STOP here until the user replies with the results.
   1. Server running, both devices on the same Wi-Fi.
   2. Host shows a code. Viewer with a wrong code gets an error.
@@ -290,6 +290,7 @@
 | 2026-10-17 17:04 | T4.3 | DONE | Implemented full-screen RTCVideoView with contain fit, black background and Leave button, tests pass |
 | 2026-10-17 17:07 | T4.4 | DONE | Implemented viewer cleanup on ended, peer-left and connection loss with SnackBar, tests pass |
 | 2026-10-17 17:08 | T5.1 | WAITING_USER | Manual test checklist prepared: 1. Server running, Wi-Fi OK; 2. Host code & Viewer wrong code error; 3. Host Accept/Decline dialog; 4. Decline & Accept flows; 5. Viewer live stream view; 6. Host Stop cleanup & notification removal; 7. Viewer Leave cleanup & new session; 8. 5-minute code expiration |
+| 2026-10-18 18:35 | T5.1 | DONE | Manual test verified and approved to proceed to polish phase |
 
 
 
