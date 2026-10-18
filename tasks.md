@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T5.4**
+**CURRENT TASK: T5.5**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -237,7 +237,7 @@
 - Done when: the timer counts up, and (after temporarily setting the limit to 1 minute and testing, then restoring 30) auto-stop works.
 - Commit: `T5.3: session timer`
 
-### [ ] T5.4 README
+### [x] T5.4 README
 - Write `README.md` with: what the app does, how it works (short diagram in text), how to run the server, how to set the server URL in the app, how to build the APK, the **security design** (consent dialog, expiring one-time code, attempt limit, DTLS-SRTP, visible notification, Stop button), known limitations (no TURN, ws not wss in dev, view-only), and a roadmap (pointer overlay, remote control with Accessibility Service, TURN, wss).
 - Done when: the README renders properly on GitHub.
 - Commit: `T5.4: readme`
@@ -293,6 +293,7 @@
 | 2026-10-18 18:35 | T5.1 | DONE | Manual test verified and approved to proceed to polish phase |
 | 2026-10-18 18:43 | T5.2 | DONE | Connection status indicator (Connecting, Connected, Disconnected) added to Host and Viewer, 19/19 tests pass |
 | 2026-10-18 18:46 | T5.3 | DONE | Host session duration timer (mm:ss) and 30-min auto-stop implemented, 21/21 tests pass |
+| 2026-10-18 18:47 | T5.4 | DONE | Comprehensive README.md updated with architecture, security model, and CI instructions |
 
 
 
