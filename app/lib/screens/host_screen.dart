@@ -13,12 +13,14 @@ class HostScreen extends StatefulWidget {
   final SignalingClient? signalingClient;
   final ScreenCaptureFunction? screenCapture;
   final PeerConnectionFactory? peerConnectionFactory;
+  final int maxSessionSeconds;
 
   const HostScreen({
     super.key,
     this.signalingClient,
     this.screenCapture,
     this.peerConnectionFactory,
+    this.maxSessionSeconds = 1800,
   });
 
   @override
@@ -30,6 +32,8 @@ class _HostScreenState extends State<HostScreen> {
   StreamSubscription<Map<String, dynamic>>? _subscription;
   MediaStream? _localStream;
   RTCPeerConnection? _peerConnection;
+  Timer? _sessionTimer;
+  int _sessionSeconds = 0;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -37,6 +41,32 @@ class _HostScreenState extends State<HostScreen> {
   String _statusText = 'Waiting for viewer...';
   bool _isSharingStarted = false;
   String? _connectionStatus;
+
+  String get _formattedSessionDuration {
+    final minutes = (_sessionSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_sessionSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _startSessionTimer() {
+    _sessionTimer?.cancel();
+    _sessionSeconds = 0;
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _sessionSeconds++;
+      });
+      if (_sessionSeconds >= widget.maxSessionSeconds) {
+        timer.cancel();
+        _stopSession(
+          message: 'Session ended: ${widget.maxSessionSeconds ~/ 60}-minute limit reached',
+        );
+      }
+    });
+  }
 
   static const MethodChannel _projectionChannel =
       MethodChannel('com.teachview.teachview/media_projection');
@@ -209,6 +239,7 @@ class _HostScreenState extends State<HostScreen> {
         _localStream = await navigator.mediaDevices.getDisplayMedia(constraints);
       }
       debugPrint('capture started');
+      _startSessionTimer();
 
       await _initWebRTC();
     } catch (e) {
@@ -325,9 +356,12 @@ class _HostScreenState extends State<HostScreen> {
   bool _isCleaningUp = false;
   bool _canPop = false;
 
-  void _stopSession({bool shouldPop = true, bool sendEnd = true}) {
+  void _stopSession({bool shouldPop = true, bool sendEnd = true, String? message}) {
     if (_isCleaningUp) return;
     _isCleaningUp = true;
+
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
 
     if (sendEnd) {
       try {
@@ -364,6 +398,13 @@ class _HostScreenState extends State<HostScreen> {
     }
 
     _connectionStatus = 'Disconnected';
+
+    if (message != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+
     if (shouldPop && mounted) {
       setState(() {
         _canPop = true;
@@ -378,6 +419,8 @@ class _HostScreenState extends State<HostScreen> {
 
   @override
   void dispose() {
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
     _subscription?.cancel();
     _stopSession(shouldPop: false);
     super.dispose();
@@ -486,8 +529,31 @@ class _HostScreenState extends State<HostScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            'Starting...',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            'Sharing your screen',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  _formattedSessionDuration,
+                  key: const Key('host_session_timer'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           if (_connectionStatus != null)

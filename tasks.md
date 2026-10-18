@@ -8,7 +8,7 @@
 > - **Cloud Environment (GitHub Codespaces):** All heavy builds (`flutter build apk`), emulators, and full app execution happen strictly online in the cloud. NEVER run heavy Gradle builds or emulators on the local physical machine.
 
 
-**CURRENT TASK: T5.3**
+**CURRENT TASK: T5.4**
 
 **GITHUB_REPO_URL:** https://github.com/rimonxyg/sudoview.git
 
@@ -232,7 +232,7 @@
 - Done when: the status changes correctly during a session.
 - Commit: `T5.2: connection status`
 
-### [ ] T5.3 Session timer and auto-stop
+### [x] T5.3 Session timer and auto-stop
 - On the Host screen show how long the session has been running (mm:ss). Automatically stop the session after 30 minutes with a message.
 - Done when: the timer counts up, and (after temporarily setting the limit to 1 minute and testing, then restoring 30) auto-stop works.
 - Commit: `T5.3: session timer`
@@ -292,6 +292,7 @@
 | 2026-10-17 17:08 | T5.1 | WAITING_USER | Manual test checklist prepared: 1. Server running, Wi-Fi OK; 2. Host code & Viewer wrong code error; 3. Host Accept/Decline dialog; 4. Decline & Accept flows; 5. Viewer live stream view; 6. Host Stop cleanup & notification removal; 7. Viewer Leave cleanup & new session; 8. 5-minute code expiration |
 | 2026-10-18 18:35 | T5.1 | DONE | Manual test verified and approved to proceed to polish phase |
 | 2026-10-18 18:43 | T5.2 | DONE | Connection status indicator (Connecting, Connected, Disconnected) added to Host and Viewer, 19/19 tests pass |
+| 2026-10-18 18:46 | T5.3 | DONE | Host session duration timer (mm:ss) and 30-min auto-stop implemented, 21/21 tests pass |
 
 
 

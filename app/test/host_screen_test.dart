@@ -412,4 +412,78 @@ void main() {
     await tester.pump();
     expect(find.text('Disconnected'), findsWidgets);
   });
+
+  testWidgets('HostScreen session timer counts up (mm:ss)', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (_) async => fakeStream,
+        peerConnectionFactory: (_) async => fakePC,
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // Initial timer shows 00:00
+    expect(find.text('00:00'), findsOneWidget);
+
+    // Advance 5 seconds
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('00:05'), findsOneWidget);
+
+    // Advance 65 more seconds -> 01:10
+    await tester.pump(const Duration(seconds: 65));
+    expect(find.text('01:10'), findsOneWidget);
+  });
+
+  testWidgets('HostScreen automatically stops session after timeout with a message', (WidgetTester tester) async {
+    final fakeClient = FakeSignalingClient();
+    final fakeStream = FakeMediaStream();
+    final fakePC = FakeRTCPeerConnection();
+
+    await tester.pumpWidget(MaterialApp(
+      home: HostScreen(
+        signalingClient: fakeClient,
+        screenCapture: (_) async => fakeStream,
+        peerConnectionFactory: (_) async => fakePC,
+        maxSessionSeconds: 60, // 1 minute limit for test
+      ),
+    ));
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'created', 'code': '849201'});
+    await tester.pump();
+
+    fakeClient.emitMessage({'type': 'join-request'});
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Accept'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(find.text('00:00'), findsOneWidget);
+
+    // Advance to 60 seconds (limit reached)
+    await tester.pump(const Duration(seconds: 60));
+    await tester.pump();
+
+    // Auto-stop triggered: cleans up, sends 'end', and shows SnackBar
+    expect(fakeClient.sentMessages.any((m) => m['type'] == 'end'), isTrue);
+    expect(fakePC.isClosed, isTrue);
+    expect(fakeStream.isDisposed, isTrue);
+    expect(find.widgetWithText(SnackBar, 'Session ended: 1-minute limit reached'), findsOneWidget);
+  });
 }
