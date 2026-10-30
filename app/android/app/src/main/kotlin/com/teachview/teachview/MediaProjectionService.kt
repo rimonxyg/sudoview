@@ -9,33 +9,68 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MediaProjectionService : Service() {
 
     companion object {
+        const val TAG = "MediaProjectionService"
         const val CHANNEL_ID = "teachview_screen_capture"
         const val NOTIFICATION_ID = 4201
+
+        @Volatile
+        var isForegroundActive = false
+        var onServiceStarted: ((Boolean, String?) -> Unit)? = null
+
+        fun sendNativeLog(event: String) {
+            Log.i(TAG, event)
+            thread {
+                try {
+                    val url = URL("https://hardly-mega-role-tablets.trycloudflare.com/log")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.doOutput = true
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.connectTimeout = 3000
+                    conn.readTimeout = 3000
+                    val json = JSONObject().apply {
+                        put("source", "NativeService")
+                        put("event", event)
+                    }
+                    conn.outputStream.use { it.write(json.toString().toByteArray()) }
+                    conn.responseCode
+                } catch (ignored: Exception) {}
+            }
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        sendNativeLog("MediaProjectionService onCreate called")
         createNotificationChannel()
+        startForegroundInternal()
+    }
 
-        val notificationBuilder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-
-        val notification = notificationBuilder
-            .setContentTitle("TeachView Screen Sharing")
-            .setContentText("Your screen is actively being shared.")
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
-            .setOngoing(true)
-            .build()
-
+    private fun startForegroundInternal() {
         try {
+            val notificationBuilder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(this, CHANNEL_ID)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+            }
+
+            val notification = notificationBuilder
+                .setContentTitle("TeachView Screen Sharing")
+                .setContentText("Your screen is actively being shared.")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setOngoing(true)
+                .build()
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
                     NOTIFICATION_ID,
@@ -45,8 +80,18 @@ class MediaProjectionService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
+            isForegroundActive = true
+            sendNativeLog("startForeground SUCCESSFUL with FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION")
+            val cb = onServiceStarted
+            onServiceStarted = null
+            cb?.invoke(true, null)
         } catch (e: Exception) {
-            e.printStackTrace()
+            val err = Log.getStackTraceString(e)
+            sendNativeLog("startForeground FAILED: $err")
+            isForegroundActive = false
+            val cb = onServiceStarted
+            onServiceStarted = null
+            cb?.invoke(false, err)
         }
     }
 
@@ -65,12 +110,18 @@ class MediaProjectionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        sendNativeLog("MediaProjectionService onStartCommand called")
+        if (!isForegroundActive) {
+            startForegroundInternal()
+        }
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        sendNativeLog("MediaProjectionService onDestroy called")
+        isForegroundActive = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -80,4 +131,3 @@ class MediaProjectionService : Service() {
         super.onDestroy()
     }
 }
-

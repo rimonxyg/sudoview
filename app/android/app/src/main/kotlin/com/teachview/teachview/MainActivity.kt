@@ -3,6 +3,8 @@ package com.teachview.teachview
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -61,13 +63,46 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "startService" -> {
                     try {
+                        if (MediaProjectionService.isForegroundActive) {
+                            Log.i("MainActivity", "MediaProjectionService already foreground active")
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+
                         val intent = Intent(this, MediaProjectionService::class.java)
+                        val mainHandler = Handler(Looper.getMainLooper())
+                        var completed = false
+
+                        val timeoutRunnable = Runnable {
+                            if (!completed) {
+                                completed = true
+                                MediaProjectionService.onServiceStarted = null
+                                Log.w("MainActivity", "MediaProjectionService start timed out after 3000ms")
+                                result.success(false)
+                            }
+                        }
+
+                        MediaProjectionService.onServiceStarted = { success, error ->
+                            if (!completed) {
+                                completed = true
+                                mainHandler.removeCallbacks(timeoutRunnable)
+                                if (success) {
+                                    Log.i("MainActivity", "MediaProjectionService successfully started and foregrounded")
+                                    result.success(true)
+                                } else {
+                                    Log.e("MainActivity", "MediaProjectionService failed to foreground: $error")
+                                    result.success(false)
+                                }
+                            }
+                        }
+
+                        mainHandler.postDelayed(timeoutRunnable, 3000)
+
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             startForegroundService(intent)
                         } else {
                             startService(intent)
                         }
-                        result.success(true)
                     } catch (e: Exception) {
                         e.printStackTrace()
                         result.success(false)

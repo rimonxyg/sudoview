@@ -251,8 +251,10 @@ class _HostScreenState extends State<HostScreen> {
 
         try {
           _sendTelemetry('Starting MediaProjection foreground service');
-          await _projectionChannel.invokeMethod('startService');
-          _sendTelemetry('MediaProjection foreground service started');
+          final serviceStarted = await _projectionChannel.invokeMethod<bool>('startService');
+          _sendTelemetry('MediaProjection foreground service started: $serviceStarted');
+          // Allow Android system_server / MediaProjectionManagerService sufficient time to register the active foreground service
+          await Future.delayed(const Duration(milliseconds: 600));
         } catch (e) {
           _sendTelemetry('Foreground service error: $e');
         }
