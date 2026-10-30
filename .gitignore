@@ -15,3 +15,5 @@ local.properties
 .~lock.*
 
 *.zip
+bin/
+build_artifacts/

@@ -222,12 +222,6 @@ class _HostScreenState extends State<HostScreen> {
 
   Future<void> _startCapture() async {
     try {
-      if (widget.screenCapture == null && defaultTargetPlatform == TargetPlatform.android) {
-        try {
-          await _projectionChannel.invokeMethod('startService');
-        } catch (_) {}
-      }
-
       final constraints = <String, dynamic>{
         'audio': false,
         'video': true,
@@ -240,6 +234,14 @@ class _HostScreenState extends State<HostScreen> {
       }
       debugPrint('capture started');
       _startSessionTimer();
+
+      if (widget.screenCapture == null && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await _projectionChannel.invokeMethod('startService');
+        } catch (e) {
+          debugPrint('Foreground service error: $e');
+        }
+      }
 
       await _initWebRTC();
     } catch (e) {
