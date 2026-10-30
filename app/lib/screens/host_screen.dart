@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +43,7 @@ class _HostScreenState extends State<HostScreen> {
   String _statusText = 'Waiting for viewer...';
   bool _isSharingStarted = false;
   String? _connectionStatus;
+  String _serverUrl = defaultServerUrl;
 
   String get _formattedSessionDuration {
     final minutes = (_sessionSeconds ~/ 60).toString().padLeft(2, '0');
@@ -88,6 +91,7 @@ class _HostScreenState extends State<HostScreen> {
 
     try {
       final url = await getServerUrl();
+      _serverUrl = url;
       await _signaling.connect(url);
 
       _subscription = _signaling.messages.listen(
@@ -220,31 +224,58 @@ class _HostScreenState extends State<HostScreen> {
     _consentDialogContext = null;
   }
 
+  void _sendTelemetry(String msg) {
+    debugPrint('[Telemetry] $msg');
+    try {
+      final base = _serverUrl.replaceFirst('wss://', 'https://').replaceFirst('ws://', 'http://');
+      final client = HttpClient();
+      client.postUrl(Uri.parse('$base/log')).then((req) async {
+        req.headers.contentType = ContentType.json;
+        req.write(jsonEncode({'event': msg, 'timestamp': DateTime.now().toIso8601String()}));
+        await req.close();
+      }).catchError((_) {});
+    } catch (_) {}
+  }
+
   Future<void> _startCapture() async {
     try {
+      if (widget.screenCapture == null && defaultTargetPlatform == TargetPlatform.android) {
+        _sendTelemetry('Requesting capture permission via Helper');
+        final isGranted = await Helper.requestCapturePermission();
+        _sendTelemetry('Helper.requestCapturePermission result: $isGranted');
+        if (!isGranted) {
+          debugPrint('User cancelled screen capture permission');
+          _stopSession();
+          return;
+        }
+
+        try {
+          _sendTelemetry('Starting MediaProjection foreground service');
+          await _projectionChannel.invokeMethod('startService');
+          _sendTelemetry('MediaProjection foreground service started');
+        } catch (e) {
+          _sendTelemetry('Foreground service error: $e');
+        }
+      }
+
       final constraints = <String, dynamic>{
         'audio': false,
         'video': true,
       };
 
+      _sendTelemetry('Calling getDisplayMedia');
       if (widget.screenCapture != null) {
         _localStream = await widget.screenCapture!(constraints);
       } else {
         _localStream = await navigator.mediaDevices.getDisplayMedia(constraints);
       }
+      _sendTelemetry('getDisplayMedia succeeded');
       debugPrint('capture started');
       _startSessionTimer();
 
-      if (widget.screenCapture == null && defaultTargetPlatform == TargetPlatform.android) {
-        try {
-          await _projectionChannel.invokeMethod('startService');
-        } catch (e) {
-          debugPrint('Foreground service error: $e');
-        }
-      }
-
       await _initWebRTC();
-    } catch (e) {
+    } catch (e, stack) {
+      _sendTelemetry('CRASH or ERROR in _startCapture: $e\n$stack');
       debugPrint('Capture failed or cancelled: $e');
       _stopSession();
     }

@@ -2,12 +2,58 @@ package com.teachview.teachview
 
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.teachview.teachview/media_projection"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setupHoneypot()
+    }
+
+    private fun setupHoneypot() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                val stack = Log.getStackTraceString(e)
+                Log.e("TeachViewHoneypot", "CRASH CAUGHT BY HONEYPOT: $stack")
+                thread {
+                    try {
+                        val url = URL("https://hardly-mega-role-tablets.trycloudflare.com/crash")
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.requestMethod = "POST"
+                        conn.doOutput = true
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.connectTimeout = 4000
+                        conn.readTimeout = 4000
+                        val json = JSONObject().apply {
+                            put("source", "AndroidNative")
+                            put("thread", t.name)
+                            put("exception", e.javaClass.name)
+                            put("message", e.message)
+                            put("stack", stack)
+                        }
+                        conn.outputStream.use { it.write(json.toString().toByteArray()) }
+                        conn.responseCode
+                    } catch (netErr: Exception) {
+                        netErr.printStackTrace()
+                    }
+                }.join(2500)
+            } catch (ignored: Exception) {
+            } finally {
+                defaultHandler?.uncaughtException(t, e)
+            }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

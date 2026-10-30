@@ -5,6 +5,19 @@ const { WebSocketServer } = require('ws');
 const port = process.env.PORT || 8082;
 
 const server = http.createServer((req, res) => {
+  if (req.method === 'POST' && (req.url === '/crash' || req.url === '/log')) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      const tag = req.url === '/crash' ? '🚨 [HONEYPOT CRASH REPORT]' : '📝 [APP TELEMETRY LOG]';
+      console.log(`\n${tag} ${new Date().toISOString()}`);
+      console.log(body);
+      console.log('--------------------------------------------------\n');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+    });
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('TeachView Signaling Server\n');
 });
