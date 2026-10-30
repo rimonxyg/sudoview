@@ -10,6 +10,12 @@ class FakeMediaStreamTrack implements MediaStreamTrack {
   bool isStopped = false;
 
   @override
+  String? get kind => 'video';
+
+  @override
+  String? get id => 'fake_track_id';
+
+  @override
   Future<bool> stop() async {
     isStopped = true;
     return true;

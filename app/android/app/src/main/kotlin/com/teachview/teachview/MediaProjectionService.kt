@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -16,6 +17,8 @@ import java.net.URL
 import kotlin.concurrent.thread
 
 class MediaProjectionService : Service() {
+
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         const val TAG = "MediaProjectionService"
@@ -81,6 +84,16 @@ class MediaProjectionService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
             isForegroundActive = true
+
+            try {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TeachView:ScreenShareWakeLock")
+                wakeLock?.acquire(60 * 60 * 1000L)
+                sendNativeLog("WakeLock acquired for background screen capture")
+            } catch (wlErr: Exception) {
+                sendNativeLog("WakeLock acquire error: ${wlErr.message}")
+            }
+
             sendNativeLog("startForeground SUCCESSFUL with FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION")
             val cb = onServiceStarted
             onServiceStarted = null
@@ -122,6 +135,16 @@ class MediaProjectionService : Service() {
     override fun onDestroy() {
         sendNativeLog("MediaProjectionService onDestroy called")
         isForegroundActive = false
+        try {
+            wakeLock?.let {
+                if (it.isHeld) it.release()
+            }
+            wakeLock = null
+            sendNativeLog("WakeLock released")
+        } catch (wlErr: Exception) {
+            sendNativeLog("WakeLock release error: ${wlErr.message}")
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

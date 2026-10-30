@@ -285,6 +285,7 @@ class _HostScreenState extends State<HostScreen> {
 
   Future<void> _initWebRTC() async {
     try {
+      _sendTelemetry('Initializing WebRTC PeerConnection');
       final configuration = <String, dynamic>{
         'iceServers': [
           {'urls': 'stun:stun.l.google.com:19302'},
@@ -297,15 +298,18 @@ class _HostScreenState extends State<HostScreen> {
           : await createPeerConnection(configuration);
 
       _peerConnection = pc;
+      _sendTelemetry('PeerConnection created');
 
       if (_localStream != null) {
         for (final track in _localStream!.getTracks()) {
+          _sendTelemetry('Adding track to PeerConnection: ${track.kind}');
           await pc.addTrack(track, _localStream!);
         }
       }
 
       pc.onIceCandidate = (RTCIceCandidate candidate) {
         if (candidate.candidate != null) {
+          _sendTelemetry('Sending ICE candidate');
           _signaling.send({
             'type': 'ice',
             'candidate': {
@@ -324,6 +328,7 @@ class _HostScreenState extends State<HostScreen> {
       }
 
       pc.onConnectionState = (RTCPeerConnectionState state) {
+        _sendTelemetry('Peer connection state changed: $state');
         debugPrint('Peer connection state: $state');
         if (!mounted) return;
         setState(() {
@@ -346,6 +351,7 @@ class _HostScreenState extends State<HostScreen> {
       };
 
       pc.onIceConnectionState = (RTCIceConnectionState state) {
+        _sendTelemetry('ICE connection state changed: $state');
         debugPrint('ICE connection state: $state');
         if (!mounted) return;
         setState(() {
@@ -374,15 +380,20 @@ class _HostScreenState extends State<HostScreen> {
         'optional': [],
       };
 
+      _sendTelemetry('Creating WebRTC offer');
       final description = await pc.createOffer(offerConstraints);
+      _sendTelemetry('Setting local description');
       await pc.setLocalDescription(description);
 
+      _sendTelemetry('Sending offer to signaling server');
       _signaling.send({
         'type': 'offer',
         'sdp': description.sdp,
       });
       debugPrint('offer sent');
-    } catch (e) {
+      _sendTelemetry('WebRTC offer sent');
+    } catch (e, stack) {
+      _sendTelemetry('CRASH or ERROR in _initWebRTC: $e\n$stack');
       debugPrint('WebRTC initialization error: $e');
       _stopSession();
     }
